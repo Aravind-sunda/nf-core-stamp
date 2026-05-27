@@ -1,0 +1,17 @@
+repository_type: pipeline
+
+nf_core_version: 4.0.2
+
+lint: {}
+
+template:
+  org: nf-core
+  name: ribostamp
+  description: A pipeline to process bulk and single cell riboSTAMP datasets
+  author: Aravind Sundaravadivelu
+  version: 1.0.0dev
+  force: true
+  outdir: .
+  skip_features:
+    - gpu
+  is_nfcore: true
