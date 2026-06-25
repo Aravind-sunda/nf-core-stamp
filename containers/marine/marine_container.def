@@ -1,0 +1,67 @@
+Bootstrap: docker
+From: condaforge/miniforge3:latest
+
+%files
+    marine_environment_mamba_py38.yaml /opt/marine_environment_mamba_py38.yaml
+    marine.py /opt/MARINE/marine.py
+    src /opt/MARINE/src
+    annotations /opt/MARINE/annotations
+
+%post
+    set -e
+    export HOME=/root
+
+    # Flexible priority lets the pinned versions in the yaml resolve without conflicts
+    conda config --system --set channel_priority flexible
+
+    # Build the environment from the pinned yaml
+    mamba env create -f /opt/marine_environment_mamba_py38.yaml
+
+    # Regenerate SONAME symlinks — some conda packages omit these, causing
+    # "cannot open shared object file" errors at runtime (e.g. libgomp.so.1)
+    /sbin/ldconfig -n /opt/conda/envs/marine_environment/lib 2>/dev/null || true
+    /sbin/ldconfig -n /opt/conda/lib 2>/dev/null || true
+
+    # Pre-warm the Numba JIT cache while the filesystem is still writable.
+    # scanpy decorates several functions with @njit(cache=True); at runtime the
+    # image is read-only squashfs so Numba cannot write the cache there and
+    # raises "no locator available". Baking the cache in now avoids that error.
+    /opt/conda/envs/marine_environment/bin/python -c "import scanpy" 2>&1 || true
+
+    # Reduce image size
+    mamba clean -afy
+    find /opt/conda -type f -name "*.pyc" -delete
+
+%environment
+    export PATH=/opt/conda/envs/marine_environment/bin:$PATH
+    export LD_LIBRARY_PATH=/opt/conda/envs/marine_environment/lib:/opt/conda/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}
+    export CONDA_DEFAULT_ENV=marine_environment
+    export CONDA_PREFIX=/opt/conda/envs/marine_environment
+    # Numba cache must live on a writable path; the image's site-packages is read-only at runtime.
+    export NUMBA_CACHE_DIR=/tmp/numba_marine_cache
+    export MPLCONFIGDIR=/tmp/matplotlib_cache
+    
+%runscript
+    exec python /opt/MARINE/marine.py "$@"
+
+%test
+    export NUMBA_CACHE_DIR=/tmp/numba_marine_cache
+    /opt/conda/envs/marine_environment/bin/python /opt/MARINE/marine.py --help
+
+%labels
+    Tool MARINE
+    Version 1.0.2
+    Description Multi-Core Algorithm for Rapid Identification of Nucleotide Edits
+    Python 3.8.18
+
+%help
+    MARINE: Multi-Core Algorithm for Rapid Identification of Nucleotide Edits
+
+    Run:   apptainer run marine.sif [args]
+    Shell: apptainer shell marine.sif
+
+    Bundled annotations (use with --annotation_bedfile_path):
+      /opt/MARINE/annotations/hg38_gencode.v35.annotation.genes.bed
+      /opt/MARINE/annotations/cellranger-GRCh38-3.0.0.annotation.genes.bed
+      /opt/MARINE/annotations/cellranger-GRCh37.annotation.genes.bed
+      /opt/MARINE/annotations/cellranger-mm10-3.0.0.annotation.genes.bed

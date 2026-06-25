@@ -19,27 +19,52 @@
                     "schema": "assets/schema_input.json",
                     "mimetype": "text/csv",
                     "pattern": "^\\S+\\.csv$",
-                    "description": "Path to comma-separated file containing information about the samples in the experiment.",
-                    "help_text": "You will need to create a design file with information about the samples in your experiment before running the pipeline. Use this parameter to specify its location. It has to be a comma-separated file with 3 columns, and a header row. See [usage docs](https://nf-co.re/ribostamp/usage#samplesheet-input).",
+                    "description": "Path to comma-separated samplesheet. Column requirements vary by --mode and start point — see usage docs.",
                     "fa_icon": "fas fa-file-csv"
                 },
                 "outdir": {
                     "type": "string",
                     "format": "directory-path",
-                    "description": "The output directory where the results will be saved. You have to use absolute paths to storage on Cloud infrastructure.",
+                    "description": "The output directory where the results will be saved. Use absolute paths on cloud infrastructure.",
                     "fa_icon": "fas fa-folder-open"
                 },
                 "email": {
                     "type": "string",
                     "description": "Email address for completion summary.",
                     "fa_icon": "fas fa-envelope",
-                    "help_text": "Set this parameter to your e-mail address to get a summary e-mail with details of the run sent to you when the workflow exits. If set in your user config file (`~/.nextflow/config`) then you don't need to specify this on the command line for every run.",
                     "pattern": "^([a-zA-Z0-9_\\-\\.]+)@([a-zA-Z0-9_\\-\\.]+)\\.([a-zA-Z]{2,5})$"
                 },
                 "multiqc_title": {
                     "type": "string",
-                    "description": "MultiQC report title. Printed as page header, used for filename if not otherwise specified.",
+                    "description": "MultiQC report title. Printed as page header.",
                     "fa_icon": "fas fa-file-signature"
+                }
+            }
+        },
+        "pipeline_options": {
+            "title": "Pipeline options",
+            "type": "object",
+            "fa_icon": "fas fa-project-diagram",
+            "description": "Configure the pipeline mode and which analyses to run.",
+            "required": ["mode"],
+            "properties": {
+                "mode": {
+                    "type": "string",
+                    "description": "Pipeline mode. 'bulk' processes bulk RNA-seq through MARINE and/or SAILOR. 'sc' processes 10x Genomics single-cell RNA-seq through MARINE SC.",
+                    "enum": ["bulk", "sc"],
+                    "fa_icon": "fas fa-layer-group"
+                },
+                "run_marine": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Run MARINE edit calling in bulk mode. Set to false to run SAILOR only.",
+                    "fa_icon": "fas fa-play-circle"
+                },
+                "run_sailor": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Run SAILOR Bayesian edit calling in bulk mode. Set to false to run MARINE only.",
+                    "fa_icon": "fas fa-play-circle"
                 }
             }
         },
@@ -47,37 +72,262 @@
             "title": "Reference genome options",
             "type": "object",
             "fa_icon": "fas fa-dna",
-            "description": "Reference genome related files and options required for the workflow.",
+            "description": "Reference genome files and indices required by the pipeline.",
             "properties": {
                 "genome": {
                     "type": "string",
-                    "description": "Name of iGenomes reference.",
-                    "fa_icon": "fas fa-book",
-                    "help_text": "If using a reference genome configured in the pipeline using iGenomes, use this parameter to give the ID for the reference. This is then used to build the full paths for all required reference genome files e.g. `--genome GRCh38`. \n\nSee the [nf-core website docs](https://nf-co.re/usage/reference_genomes) for more details."
+                    "description": "Genome build key used to select the built-in genePred file for metaPlotR. One of: hg19, hg38, hg38_V44, mm10, mm39.",
+                    "enum": ["hg19", "hg38", "hg38_V44", "mm10", "mm39"],
+                    "fa_icon": "fas fa-book"
                 },
                 "fasta": {
                     "type": "string",
                     "format": "file-path",
                     "exists": true,
-                    "mimetype": "text/plain",
                     "pattern": "^\\S+\\.fn?a(sta)?(\\.gz)?$",
-                    "description": "Path to FASTA genome file.",
-                    "help_text": "This parameter is *mandatory* if `--genome` is not specified. If you don't have a BWA index available this will be generated for you automatically. Combine with `--save_reference` to save BWA index for future runs.",
+                    "description": "Path to genome FASTA file. Required for MARINE (samtools calmd) and SAILOR.",
                     "fa_icon": "far fa-file-code"
+                },
+                "star_index": {
+                    "type": "string",
+                    "format": "directory-path",
+                    "exists": true,
+                    "description": "Path to pre-built STAR genome index directory. Required for bulk FASTQ mode.",
+                    "fa_icon": "fas fa-folder"
+                },
+                "gtf": {
+                    "type": "string",
+                    "format": "file-path",
+                    "exists": true,
+                    "pattern": "^\\S+\\.gtf(\\.gz)?$",
+                    "description": "GTF annotation file. Required for STAR alignment (bulk FASTQ) and featureCounts (bulk MARINE).",
+                    "fa_icon": "fas fa-file-alt"
+                },
+                "gene_bed": {
+                    "type": "string",
+                    "format": "file-path",
+                    "exists": true,
+                    "pattern": "^\\S+\\.bed(\\.gz)?$",
+                    "description": "BED6 gene-model file. Used by RSeQC infer_experiment.py for strandedness inference and by MARINE for edit-site annotation.",
+                    "fa_icon": "fas fa-file-alt"
+                },
+                "dbsnp_bed": {
+                    "type": "string",
+                    "format": "file-path",
+                    "exists": true,
+                    "pattern": "^\\S+\\.(bed|bed3)(\\.gz)?$",
+                    "description": "dbSNP BED file (BED3 format). Known SNP positions are removed from MARINE and SAILOR edit calls during filtering.",
+                    "fa_icon": "fas fa-file-alt"
+                },
+                "cellranger_ref": {
+                    "type": "string",
+                    "format": "directory-path",
+                    "exists": true,
+                    "description": "Pre-built CellRanger reference directory. Required for --mode sc with FASTQ input.",
+                    "fa_icon": "fas fa-folder"
                 },
                 "igenomes_ignore": {
                     "type": "boolean",
                     "description": "Do not load the iGenomes reference config.",
                     "fa_icon": "fas fa-ban",
-                    "hidden": true,
-                    "help_text": "Do not load `igenomes.config` when running the pipeline. You may choose this option if you observe clashes between custom parameters and those supplied in `igenomes.config`."
+                    "hidden": true
                 },
                 "igenomes_base": {
                     "type": "string",
-                    "description": "The base path to the igenomes reference files",
+                    "description": "Base path to iGenomes reference files.",
                     "fa_icon": "fas fa-ban",
                     "hidden": true,
                     "default": "s3://ngi-igenomes/igenomes/"
+                }
+            }
+        },
+        "edit_calling_options": {
+            "title": "Edit calling options",
+            "type": "object",
+            "fa_icon": "fas fa-dna",
+            "description": "Parameters controlling MARINE and SAILOR edit-calling behaviour.",
+            "properties": {
+                "edit_type": {
+                    "type": "string",
+                    "default": "C>T",
+                    "description": "Type of RNA editing to detect. 'C>T' for A-to-I editing on the reverse strand (most STAMP/DART-seq experiments). 'A>G' for sense-strand A-to-I editing. Used throughout filtering, normalization, and metaPlotR steps.",
+                    "enum": ["C>T", "A>G"],
+                    "fa_icon": "fas fa-exchange-alt"
+                },
+                "marine_sif": {
+                    "type": "string",
+                    "format": "file-path",
+                    "exists": true,
+                    "pattern": "^\\S+\\.sif$",
+                    "description": "Path to a pre-built MARINE Singularity SIF. If not set, Nextflow automatically pulls and converts docker.io/aravindsundaravadivelu/marine:1.0.2.",
+                    "fa_icon": "fas fa-box"
+                },
+                "ribostamp_utils_sif": {
+                    "type": "string",
+                    "format": "file-path",
+                    "exists": true,
+                    "pattern": "^\\S+\\.sif$",
+                    "description": "Path to a pre-built ribostamp_utils Singularity SIF. If not set, Nextflow automatically pulls and converts docker.io/aravindsundaravadivelu/ribostamp_utils:1.0.0.",
+                    "fa_icon": "fas fa-box"
+                },
+                "barcode_tag": {
+                    "type": "string",
+                    "default": "CB",
+                    "description": "BAM tag storing cell barcodes. CellRanger uses 'CB'. Only applies to --mode sc.",
+                    "fa_icon": "fas fa-tag"
+                },
+                "strandedness": {
+                    "type": "integer",
+                    "enum": [0, 1, 2],
+                    "description": "Library strandedness: 0=unstranded, 1=forward, 2=reverse. Only required when running SAILOR from BAM input without running MARINE first (strandedness is otherwise inferred per-sample by RSeQC infer_experiment.py).",
+                    "fa_icon": "fas fa-arrows-alt-h"
+                },
+                "min_base_quality": {
+                    "type": "integer",
+                    "default": 30,
+                    "description": "Minimum base quality (Phred) for MARINE to count a base toward editing evidence.",
+                    "minimum": 0,
+                    "maximum": 40,
+                    "fa_icon": "fas fa-filter"
+                },
+                "min_read_quality": {
+                    "type": "integer",
+                    "default": 255,
+                    "description": "Minimum read mapping quality for MARINE. Use 255 for CellRanger-mapped BAMs (CellRanger assigns 255 to uniquely mapped reads).",
+                    "minimum": 0,
+                    "fa_icon": "fas fa-filter"
+                }
+            }
+        },
+        "filtering_options": {
+            "title": "Edit filtering options",
+            "type": "object",
+            "fa_icon": "fas fa-filter",
+            "description": "Thresholds for filtering called edit sites after MARINE.",
+            "properties": {
+                "min_count": {
+                    "type": "integer",
+                    "default": 3,
+                    "description": "Minimum number of reads with an edit at a site. Applied during SC filtering. Lower values call more sites but increase noise.",
+                    "minimum": 1,
+                    "fa_icon": "fas fa-sort-numeric-up"
+                },
+                "max_frac": {
+                    "type": "number",
+                    "default": 0.1,
+                    "description": "Maximum editing fraction. Sites with a fraction above this cutoff are filtered as likely SNPs or mismatches.",
+                    "minimum": 0,
+                    "maximum": 1,
+                    "fa_icon": "fas fa-percentage"
+                },
+                "filter_bulk_multiallelic": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Bulk F1: remove sites where more than one alt base appears at the same contig/position/ref.",
+                    "fa_icon": "fas fa-times-circle"
+                },
+                "filter_bulk_dbsnp": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Bulk F2: remove edit sites whose position overlaps a dbSNP entry.",
+                    "fa_icon": "fas fa-times-circle"
+                },
+                "filter_bulk_max_frac": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Bulk F3: remove sites where edit_fraction exceeds --max_frac.",
+                    "fa_icon": "fas fa-times-circle"
+                },
+                "filter_bulk_unannotated": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Bulk F4: remove sites with no gene annotation (feature_type == -1).",
+                    "fa_icon": "fas fa-times-circle"
+                },
+                "filter_sc_multi_conversion": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "SC F1: remove barcodes with more than one conversion type at the same site.",
+                    "fa_icon": "fas fa-times-circle"
+                },
+                "filter_sc_dbsnp": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "SC F2: remove edit sites whose position overlaps a dbSNP entry.",
+                    "fa_icon": "fas fa-times-circle"
+                },
+                "filter_sc_min_count": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "SC F3: remove sites with fewer than --min_count total edited reads across all cells.",
+                    "fa_icon": "fas fa-times-circle"
+                },
+                "filter_sc_max_frac": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "SC F4: remove sites where edit_fraction exceeds --max_frac.",
+                    "fa_icon": "fas fa-times-circle"
+                },
+                "filter_sc_unannotated": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "SC F5: remove sites with no gene annotation (feature_type == -1).",
+                    "fa_icon": "fas fa-times-circle"
+                }
+            }
+        },
+        "sailor_options": {
+            "title": "SAILOR options",
+            "type": "object",
+            "fa_icon": "fas fa-ship",
+            "description": "Options for the SAILOR Bayesian edit-calling Snakemake pipeline. Only used when --mode bulk and --run_sailor true.",
+            "properties": {
+                "sailor_snakefile": {
+                    "type": "string",
+                    "format": "file-path",
+                    "exists": true,
+                    "description": "Path to the SAILOR Snakefile. Defaults to the bundled copy at assets/sailor/Snakefile. Override to use a different version.",
+                    "fa_icon": "fas fa-file-code"
+                },
+                "sailor_snakemake_path": {
+                    "type": "string",
+                    "default": "snakemake",
+                    "description": "Absolute path to the snakemake binary, or 'snakemake' if it is already in PATH. Set this to e.g. '/path/to/conda/envs/snakemake/bin/snakemake' when running under Singularity where snakemake is not in the host PATH.",
+                    "fa_icon": "fas fa-terminal"
+                },
+                "sailor_singularity_cache": {
+                    "type": "string",
+                    "format": "directory-path",
+                    "description": "Directory for caching SAILOR Singularity images. Will be created if it does not exist.",
+                    "fa_icon": "fas fa-folder"
+                },
+                "sailor_singularity_bind": {
+                    "type": "string",
+                    "description": "Comma-separated bind paths for SAILOR's internal Singularity calls (e.g. '/condo/brannanlab,/home/user/refs'). Must cover the locations of --fasta and --dbsnp_bed.",
+                    "fa_icon": "fas fa-link"
+                },
+                "sailor_container_engine": {
+                    "type": "string",
+                    "default": "singularity",
+                    "enum": ["singularity"],
+                    "description": "Backend for SAILOR's internal Snakemake rules. Only 'singularity' is supported — SAILOR's Snakemake rules declare singularity directives only and have no conda environment definitions.",
+                    "fa_icon": "fas fa-box"
+                }
+            }
+        },
+        "metagene_options": {
+            "title": "Metagene plot options",
+            "type": "object",
+            "fa_icon": "fas fa-chart-area",
+            "description": "Options for metaPlotR metagene distance calculation.",
+            "properties": {
+                "genepred": {
+                    "type": "string",
+                    "format": "file-path",
+                    "exists": true,
+                    "pattern": "^\\S+\\.txt(\\.gz)?$",
+                    "description": "Path to a custom genePred annotation file for metaPlotR. If not set, the pipeline selects the built-in file based on --genome (hg19, hg38, hg38_V44, mm10, mm39).",
+                    "fa_icon": "fas fa-file-alt"
                 }
             }
         },
@@ -100,7 +350,6 @@
                     "description": "Base directory for Institutional configs.",
                     "default": "https://raw.githubusercontent.com/nf-core/configs/master",
                     "hidden": true,
-                    "help_text": "If you're running offline, Nextflow will not be able to fetch the institutional config files from the internet. If you don't need them, then this is not a problem. If you do need them, you should download the files from the repo and tell Nextflow where to find them with this parameter.",
                     "fa_icon": "fas fa-users-cog"
                 },
                 "config_profile_name": {
@@ -134,7 +383,6 @@
             "type": "object",
             "fa_icon": "fas fa-file-import",
             "description": "Less common options for the pipeline, typically set in a config file.",
-            "help_text": "These options are common to all nf-core pipelines and allow you to customise some of the core preferences for how the pipeline runs.\n\nTypically these options would be set in a Nextflow config file loaded for all pipeline runs, such as `~/.nextflow/config`.",
             "properties": {
                 "version": {
                     "type": "boolean",
@@ -146,7 +394,6 @@
                     "type": "string",
                     "default": "copy",
                     "description": "Method used to save pipeline results to output directory.",
-                    "help_text": "The Nextflow `publishDir` option specifies which intermediate files should be saved to the output directory. This option tells the pipeline what method should be used to move these files. See [Nextflow docs](https://www.nextflow.io/docs/latest/process.html#publishdir) for details.",
                     "fa_icon": "fas fa-copy",
                     "enum": ["symlink", "rellink", "link", "copy", "copyNoFollow", "move"],
                     "hidden": true
@@ -156,7 +403,6 @@
                     "description": "Email address for completion summary, only when pipeline fails.",
                     "fa_icon": "fas fa-exclamation-triangle",
                     "pattern": "^([a-zA-Z0-9_\\-\\.]+)@([a-zA-Z0-9_\\-\\.]+)\\.([a-zA-Z]{2,5})$",
-                    "help_text": "An email address to send a summary email to when the pipeline is completed - ONLY sent if the pipeline does not exit successfully.",
                     "hidden": true
                 },
                 "plaintext_email": {
@@ -188,7 +434,7 @@
                 },
                 "multiqc_logo": {
                     "type": "string",
-                    "description": "Custom logo file to supply to MultiQC. File name must also be set in the MultiQC config file",
+                    "description": "Custom logo file to supply to MultiQC.",
                     "fa_icon": "fas fa-image",
                     "hidden": true
                 },
@@ -199,7 +445,7 @@
                 },
                 "validate_params": {
                     "type": "boolean",
-                    "description": "Boolean whether to validate parameters against the schema at runtime",
+                    "description": "Boolean whether to validate parameters against the schema at runtime.",
                     "default": true,
                     "fa_icon": "fas fa-check-square",
                     "hidden": true
@@ -207,14 +453,14 @@
                 "pipelines_testdata_base_path": {
                     "type": "string",
                     "fa_icon": "far fa-check-circle",
-                    "description": "Base URL or local path to location of pipeline test dataset files",
+                    "description": "Base URL or local path to pipeline test dataset files.",
                     "default": "https://raw.githubusercontent.com/nf-core/test-datasets/",
                     "hidden": true
                 },
                 "trace_report_suffix": {
                     "type": "string",
                     "fa_icon": "far calendar",
-                    "description": "Suffix to add to the trace report filename. Default is the date and time in the format yyyy-MM-dd_HH-mm-ss.",
+                    "description": "Suffix added to trace report filename.",
                     "hidden": true
                 },
                 "help": {
@@ -227,23 +473,20 @@
                 },
                 "show_hidden": {
                     "type": "boolean",
-                    "description": "Display hidden parameters in the help message (only works when --help or --help_full are provided)."
+                    "description": "Display hidden parameters in the help message."
                 }
             }
         }
     },
     "allOf": [
-        {
-            "$ref": "#/$defs/input_output_options"
-        },
-        {
-            "$ref": "#/$defs/reference_genome_options"
-        },
-        {
-            "$ref": "#/$defs/institutional_config_options"
-        },
-        {
-            "$ref": "#/$defs/generic_options"
-        }
+        { "$ref": "#/$defs/input_output_options" },
+        { "$ref": "#/$defs/pipeline_options" },
+        { "$ref": "#/$defs/reference_genome_options" },
+        { "$ref": "#/$defs/edit_calling_options" },
+        { "$ref": "#/$defs/filtering_options" },
+        { "$ref": "#/$defs/sailor_options" },
+        { "$ref": "#/$defs/metagene_options" },
+        { "$ref": "#/$defs/institutional_config_options" },
+        { "$ref": "#/$defs/generic_options" }
     ]
 }

@@ -8,3 +8,6 @@ testing*
 *.pyc
 null/
 .lineage/
+
+# Ignore test data, this has to be transferred to appropriate github or people
+assets/test_data
