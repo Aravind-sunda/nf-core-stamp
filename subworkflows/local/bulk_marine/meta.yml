@@ -1,0 +1,68 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/nf-core/modules/master/subworkflows/yaml-schema.json
+name: "bulk_marine"
+description: |
+  Run bulk RNA-seq editing detection with MARINE. Accepts FASTQ-start or BAM-start
+  samples, performs QC, trimming, alignment (FASTQ only), strandedness inference,
+  MARINE editing calling, featureCounts quantification, edit filtering, normalisation,
+  and metaPlotR visualisation.
+keywords:
+  - RNA editing
+  - bulk RNA-seq
+  - MARINE
+  - STAR
+  - featureCounts
+  - metaPlotR
+components:
+  - fastqc
+  - fastp
+  - star_align
+  - infer_strandedness
+  - marine_bulk
+  - featurecounts
+  - merge_counts
+  - filter_edits_bulk
+  - normalize_edits_bulk
+  - metaplotr_bulk
+input:
+  - ch_input:
+      type: list
+      description: |
+        Samplesheet-classified input channel. Each item is either:
+          FASTQ-start: [ meta{id, mode:'bulk', start:'fastq', single_end}, reads ]
+          BAM-start:   [ meta{id, mode:'bulk', start:'bam',   single_end}, bam ]
+  - star_index:
+      type: directory
+      description: Pre-built STAR genome index directory.
+  - gtf:
+      type: file
+      description: GTF annotation file (uncompressed) for STAR and featureCounts.
+  - gene_bed:
+      type: file
+      description: BED6 gene model file for MARINE edit annotation.
+  - dbsnp_bed:
+      type: file
+      description: dbSNP BED file used to filter known SNP positions.
+  - genepred:
+      type: file
+      description: genePred annotation file for metaPlotR metagene plots.
+output:
+  - bams:
+      type: list
+      description: |
+        All aligned/input BAMs with BAI indices: [ meta, bam, bai ].
+        Passed to BULK_SAILOR subworkflow when SAILOR is also enabled.
+  - strand_codes:
+      type: list
+      description: |
+        Per-sample strandedness integers: [ sample_id, strand_int (0/1/2) ].
+        Used to derive consensus strandedness for SAILOR.
+  - multiqc:
+      type: file
+      description: MultiQC-compatible QC files (FastQC zips, fastp JSON, STAR logs).
+  - versions:
+      type: file
+      description: versions.yml files from all modules.
+authors:
+  - "@aravind.sunda"
+maintainers:
+  - "@aravind.sunda"
