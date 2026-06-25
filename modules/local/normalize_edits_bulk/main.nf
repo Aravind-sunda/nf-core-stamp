@@ -15,7 +15,6 @@ process NORMALIZE_EDITS_BULK {
 
     output:
     tuple val(meta), path("bedgraphs/"), emit: bedgraph_dir
-    path "*",                            emit: all_outputs
     path "versions.yml",                 emit: versions
 
     script:

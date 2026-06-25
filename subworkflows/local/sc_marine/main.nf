@@ -40,7 +40,8 @@ workflow SC_MARINE {
     // ── FASTQ START: CellRanger ───────────────────────────────────────────────
     // ch_by_start.fastq: [ meta, fastq_dir ]
     CELLRANGER(ch_by_start.fastq, cellranger_ref)
-    ch_versions = ch_versions.mix(CELLRANGER.out.versions)
+    ch_versions      = ch_versions.mix(CELLRANGER.out.versions)
+    ch_multiqc_files = ch_multiqc_files.mix(CELLRANGER.out.outs_dir.map { _m, d -> d })
 
     // CellRanger BAM output has the BAI embedded; emit as [ meta, bam, bai, matrix_dir ]
     def ch_bams_from_fastq = CELLRANGER.out.bam

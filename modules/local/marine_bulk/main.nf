@@ -7,6 +7,8 @@ process MARINE_BULK {
     label 'process_marine_bulk'
     publishDir { "${params.outdir}/04_marine/${meta.id}" }, mode: params.publish_dir_mode
 
+    // No conda directive: MARINE has no Bioconda package.
+    // Use -profile singularity or -profile docker; -profile conda is not supported for this process.
     container { params.marine_sif as String ?: 'docker.io/aravindsundaravadivelu/marine:1.0.2' }
 
     input:

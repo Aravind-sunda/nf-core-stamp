@@ -7,8 +7,9 @@ process SAILOR {
     label 'process_sailor'
     publishDir "${params.outdir}/04_sailor", mode: params.publish_dir_mode
 
-    // Snakemake installed via conda; the rest of the pipeline may use Singularity.
-    // Enable conda for this process specifically in conf/modules.config.
+    // Snakemake is installed via conda when using -profile conda.
+    // Under -profile singularity, this conda directive is ignored (conda.enabled=false globally);
+    // Snakemake must be pre-installed and available on PATH (or set --sailor_snakemake_path).
     conda 'bioconda::snakemake-minimal=9.13.4 conda-forge::python>=3.8'
 
     input:
@@ -39,7 +40,25 @@ process SAILOR {
     def sing_cache = params.sailor_singularity_cache ?: ''
     def sing_bind  = params.sailor_singularity_bind  ?: ''
     """
+    # Verify Snakemake is available before doing any work
+    SNAKEMAKE_BIN="${params.sailor_snakemake_path}"
+    command -v "\${SNAKEMAKE_BIN}" > /dev/null 2>&1 || {
+        echo "ERROR: snakemake not found at '\${SNAKEMAKE_BIN}'."
+        echo "       Pre-install it (e.g. conda install snakemake) or set --sailor_snakemake_path."
+        exit 1
+    }
+
     mkdir -p sailor_output
+
+    # STAR produces BAMs named {id}.Aligned.sortedByCoord.out.bam. Strip the STAR
+    # suffix so SAILOR uses the clean sample ID, not the full filename, as the
+    # sample key. BAM-start samples are already cleanly named and unaffected.
+    for bam in *.Aligned.sortedByCoord.out.bam; do
+        [[ -f "\$bam" ]] || continue
+        sample="\${bam%.Aligned.sortedByCoord.out.bam}"
+        mv "\$bam" "\${sample}.bam"
+        [[ -f "\${bam}.bai" ]] && mv "\${bam}.bai" "\${sample}.bam.bai" || true
+    done
 
     # Generate SAILOR JSON config; all staged BAMs are discoverable in the workdir
     helper_make_sailor_json.py \\
@@ -82,8 +101,6 @@ process SAILOR {
         [[ -n "\$_bind_dirs" ]] && SNAKEMAKE_OPTS+=(--singularity-args "--bind \$_bind_dirs")
     fi
 
-    SNAKEMAKE_BIN="${params.sailor_snakemake_path}"
-    
     "\${SNAKEMAKE_BIN}" "\${SNAKEMAKE_OPTS[@]}"
 
     cat <<-END_VERSIONS > versions.yml

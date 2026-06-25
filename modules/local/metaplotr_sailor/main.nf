@@ -20,14 +20,16 @@ process METAPLOTR_SAILOR {
 
     script:
     def prefix = meta.id
-    // SAILOR ranked BED column 5 (1-indexed) is the posterior probability / confidence
+    // SAILOR ranked BED layout: chr start end confidence reads strand (6 columns)
+    // Column 4 (1-indexed) is the Bayesian posterior probability / confidence score (0–1)
+    // Column 5 is the reads field (e.g. "1,9" = edited,total) — non-numeric, not the confidence
     // Unstranded libraries: metaPlotR cannot determine 5'/3' direction
     def ignore_strand_opt = strandedness == 0 ? "--ignore-strand" : ""
     """
     # Three confidence tiers: all sites / ≥0.5 / ≥0.9
     cp ${ranked_bed} ${prefix}.all.bed
-    awk '\$5 >= 0.5' ${ranked_bed} > ${prefix}.conf0.5.bed
-    awk '\$5 >= 0.9' ${ranked_bed} > ${prefix}.conf0.9.bed
+    awk '\$4 >= 0.5' ${ranked_bed} > ${prefix}.conf0.5.bed
+    awk '\$4 >= 0.9' ${ranked_bed} > ${prefix}.conf0.9.bed
 
     for TIER in all conf0.5 conf0.9; do
         BED_FILE="${prefix}.\${TIER}.bed"

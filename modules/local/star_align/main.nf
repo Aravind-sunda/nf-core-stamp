@@ -20,8 +20,9 @@ process STAR_ALIGN {
     path "versions.yml",                                                    emit: versions
 
     script:
-    def prefix   = meta.id
-    def read_cmd = meta.single_end ? "${reads[0]}" : "${reads[0]} ${reads[1]}"
+    def prefix        = meta.id
+    def read_cmd      = meta.single_end ? "${reads[0]}" : "${reads[0]} ${reads[1]}"
+    def reads_gz_flag = reads[0].name.endsWith('.gz') ? '--readFilesCommand zcat' : ''
     """
     STAR \\
         --alignEndsType EndToEnd \\
@@ -37,7 +38,7 @@ process STAR_ALIGN {
         --outSAMmode Full \\
         --outSAMtype BAM SortedByCoordinate \\
         --outSAMunmapped Within \\
-        --readFilesCommand zcat \\
+        ${reads_gz_flag} \\
         --readFilesIn ${read_cmd} \\
         --runMode alignReads \\
         --runThreadN ${task.cpus} \\

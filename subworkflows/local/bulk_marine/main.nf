@@ -78,7 +78,8 @@ workflow BULK_MARINE {
 
     // ── Infer strandedness per sample ─────────────────────────────────────────
     INFER_STRANDEDNESS(ch_all_bams, gene_bed)
-    ch_versions = ch_versions.mix(INFER_STRANDEDNESS.out.versions)
+    ch_versions      = ch_versions.mix(INFER_STRANDEDNESS.out.versions)
+    ch_multiqc_files = ch_multiqc_files.mix(INFER_STRANDEDNESS.out.strandedness_txt.map { _m, f -> f })
 
     // Parse strand_code_txt to an integer value and join back to BAMs
     def ch_strand_codes = INFER_STRANDEDNESS.out.strand_code_txt

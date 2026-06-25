@@ -4,6 +4,9 @@ process GUNZIP {
     tag "$archive"
     label 'process_single'
 
+    conda 'conda-forge::gzip=1.11'
+    container 'quay.io/biocontainers/gzip:1.11'
+
     input:
     path archive
 

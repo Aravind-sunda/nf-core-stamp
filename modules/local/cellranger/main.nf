@@ -15,6 +15,8 @@ process CELLRANGER {
 
     // Community CellRanger container — requires 10x Genomics license acceptance.
     // Override via conf/modules.config if using a locally built or licensed image.
+    // No conda directive: CellRanger has no Bioconda package.
+    // Use -profile singularity or -profile docker; -profile conda is not supported for this process.
     container "nf-core/cellranger:9.0.1"
 
     input:

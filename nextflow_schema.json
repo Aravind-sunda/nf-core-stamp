@@ -305,13 +305,6 @@
                     "type": "string",
                     "description": "Comma-separated bind paths for SAILOR's internal Singularity calls (e.g. '/condo/brannanlab,/home/user/refs'). Must cover the locations of --fasta and --dbsnp_bed.",
                     "fa_icon": "fas fa-link"
-                },
-                "sailor_container_engine": {
-                    "type": "string",
-                    "default": "singularity",
-                    "enum": ["singularity"],
-                    "description": "Backend for SAILOR's internal Snakemake rules. Only 'singularity' is supported — SAILOR's Snakemake rules declare singularity directives only and have no conda environment definitions.",
-                    "fa_icon": "fas fa-box"
                 }
             }
         },
