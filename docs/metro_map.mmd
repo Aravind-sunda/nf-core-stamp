@@ -1,0 +1,97 @@
+%%metro title: nf-core/ribostamp
+%%metro style: dark
+%%metro logo: docs/images/nf-core-ribostamp_logo_dark.png
+%%metro logo_scale: 0.6
+%%metro legend: bl
+
+%%metro file: fastq_in    | FASTQ
+%%metro file: bam_bulk_in | BAM  | Bulk BAM
+%%metro file: bam_sc_in   | BAM  | SC BAM
+%%metro file: marine_out  | TSV  | MARINE edits
+%%metro file: sailor_out  | BED  | Ranked BEDs
+%%metro file: sc_out      | TSV  | SC edits
+
+%%metro off_track: bam_bulk_in
+%%metro off_track: bam_sc_in
+
+%%metro line: bulk_marine | Bulk · MARINE | #2db572
+%%metro line: bulk_sailor | Bulk · SAILOR | #e6842a
+%%metro line: sc          | Single Cell   | #0570b0
+
+%%metro interchange: infer_strand | bulk_marine | bulk_sailor
+
+graph LR
+    subgraph preprocessing [Pre-processing]
+        %%metro entry: left | bulk_marine, bulk_sailor, sc
+        %%metro exit: right | bulk_marine, bulk_sailor, sc
+        fastq_in[ ]
+        fastqc[FastQC]
+        fastp[FastP]
+        star_align[STAR Align]
+        cellranger[CellRanger]
+        fastq_in -->|bulk_marine,bulk_sailor| fastqc
+        fastqc -->|bulk_marine,bulk_sailor| fastp
+        fastp -->|bulk_marine,bulk_sailor| star_align
+        fastq_in -->|sc| cellranger
+    end
+
+    subgraph bulk_align [Bulk BAM · Strandedness]
+        %%metro entry: left | bulk_marine, bulk_sailor
+        %%metro exit: right | bulk_marine, bulk_sailor
+        bam_bulk_in[ ]
+        infer_strand[Infer Strandedness]
+        bam_bulk_in -->|bulk_marine,bulk_sailor| infer_strand
+    end
+
+    subgraph marine_bulk_sec [MARINE Bulk]
+        %%metro entry: left | bulk_marine
+        %%metro exit: right | bulk_marine
+        marine_bulk[MARINE Bulk]
+        featurecounts[featureCounts]
+        merge_counts[Merge Counts]
+        filter_edits_b[Filter Edits]
+        normalize_b[Normalize Edits]
+        metaplotr_b[metaPlotR]
+        multiqc_b[MultiQC]
+        marine_out[ ]
+        marine_bulk -->|bulk_marine| featurecounts
+        marine_bulk -->|bulk_marine| filter_edits_b
+        featurecounts -->|bulk_marine| merge_counts
+        merge_counts -->|bulk_marine| normalize_b
+        filter_edits_b -->|bulk_marine| normalize_b
+        normalize_b -->|bulk_marine| metaplotr_b
+        metaplotr_b -->|bulk_marine| multiqc_b
+        metaplotr_b -->|bulk_marine| marine_out
+    end
+
+    subgraph sailor_sec [SAILOR]
+        %%metro entry: left | bulk_sailor
+        %%metro exit: right | bulk_sailor
+        sailor_run[SAILOR]
+        metaplotr_s[metaPlotR]
+        sailor_out[ ]
+        sailor_run -->|bulk_sailor| metaplotr_s
+        metaplotr_s -->|bulk_sailor| sailor_out
+    end
+
+    subgraph sc_marine_sec [Single Cell MARINE]
+        %%metro entry: left | sc
+        %%metro exit: right | sc
+        bam_sc_in[ ]
+        marine_sc[MARINE SC]
+        filter_sc[Filter Edits SC]
+        normalize_sc[Normalize Edits SC]
+        multiqc_sc[MultiQC]
+        sc_out[ ]
+        bam_sc_in -->|sc| marine_sc
+        marine_sc -->|sc| filter_sc
+        filter_sc -->|sc| normalize_sc
+        normalize_sc -->|sc| multiqc_sc
+        normalize_sc -->|sc| sc_out
+    end
+
+    %% ── Inter-section edges ──────────────────────────────────────────────
+    star_align   -->|bulk_marine,bulk_sailor| infer_strand
+    infer_strand -->|bulk_marine| marine_bulk
+    infer_strand -->|bulk_sailor| sailor_run
+    cellranger   -->|sc| marine_sc

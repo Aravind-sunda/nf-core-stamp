@@ -18,7 +18,3 @@ nf-metro render metro_map.mmd \
     --format html \
     -o images/ribostamp_metro.html
 
-
-nf-metro validate metro_map_v2.mmd
-
-nf-metro render metro_map_v2.mmd --theme nfcore -o images/ribostamp_metro_v2.svg
