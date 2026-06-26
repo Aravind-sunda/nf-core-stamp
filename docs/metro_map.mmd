@@ -4,6 +4,7 @@
 %%metro logo_scale: 0.6
 %%metro legend: bl
 
+%%metro file: fastq_sc    | FASTQ
 %%metro file: fastq_in    | FASTQ
 %%metro file: bam_bulk_in | BAM  | Bulk BAM
 %%metro file: bam_sc_in   | BAM  | SC BAM
@@ -18,6 +19,12 @@
 %%metro line: bulk_sailor | Bulk · SAILOR | #e6842a
 %%metro line: sc          | Single Cell   | #0570b0
 
+%%metro grid: preprocessing   | 1,1,3,1
+%%metro grid: bulk_align      | 2,1,2,1
+%%metro grid: marine_bulk_sec | 3,1
+%%metro grid: sailor_sec      | 3,2
+%%metro grid: sc_marine_sec   | 2,3
+
 %%metro interchange: infer_strand | bulk_marine | bulk_sailor
 
 graph LR
@@ -25,6 +32,7 @@ graph LR
         %%metro entry: left | bulk_marine, bulk_sailor, sc
         %%metro exit: right | bulk_marine, bulk_sailor, sc
         fastq_in[ ]
+        fastq_sc[ ]
         fastqc[FastQC]
         fastp[FastP]
         star_align[STAR Align]
@@ -32,7 +40,8 @@ graph LR
         fastq_in -->|bulk_marine,bulk_sailor| fastqc
         fastqc -->|bulk_marine,bulk_sailor| fastp
         fastp -->|bulk_marine,bulk_sailor| star_align
-        fastq_in -->|sc| cellranger
+        fastq_sc  -->|sc| cellranger
+        %%fastq_in -->|sc| cellranger
     end
 
     subgraph bulk_align [Bulk BAM · Strandedness]
