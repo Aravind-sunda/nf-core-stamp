@@ -34,7 +34,8 @@
 <!-- TODO nf-core: Fill in short bullet-pointed list of the default steps in the pipeline -->1. Read QC ([`FastQC`](https://www.bioinformatics.babraham.ac.uk/projects/fastqc/))2. Present QC for raw reads ([`MultiQC`](http://multiqc.info/))
 
 **running nf-core/ribostamp on HPC**
-If your HPC does not allow direct access to the internet, you will need to download the necessary images/containers and upload it into singularity_cache folder in your working directory. Follow the instructions here: [`RUNNIN_ON_HPC.md`](RUNNING_ON_HPC.md).
+
+If your HPC does not allow direct access to the internet, you will need to download the necessary images/containers and upload it into singularity_cache folder in your working directory. Follow the instructions here: [`RUNNING_ON_HPC.md`](RUNNING_ON_HPC.md). Then, after completing the steps, you can run [`run_pipeline_test_offline.sh`](nf-core-ribostamp/bin/run_pipeline_test_offline.sh).
 
 ## Usage
 
