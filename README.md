@@ -35,7 +35,7 @@
 
 **running nf-core/ribostamp on HPC**
 
-If your HPC does not allow direct access to the internet, you will need to download the necessary images/containers and upload it into singularity_cache folder in your working directory. Follow the instructions here: [`RUNNING_ON_HPC.md`](RUNNING_ON_HPC.md). Then, after completing the steps, you can run [`run_pipeline_test_offline.sh`](nf-core-ribostamp/bin/run_pipeline_test_offline.sh).
+If your HPC does not allow direct access to the internet, you will need to download the necessary images/containers and upload it into singularity_cache folder in your working directory. Follow the instructions here: [`RUNNING_ON_HPC.md`](RUNNING_ON_HPC.md). Then, after completing the steps, you can run [`run_pipeline_test_offline.sh`](https://github.com/Aravind-sunda/nf-core-ribostamp/blob/dev/bin/run_pipeline_test_offline.sh).
 
 ## Usage
 
