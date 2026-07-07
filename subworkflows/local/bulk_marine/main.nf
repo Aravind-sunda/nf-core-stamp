@@ -29,6 +29,7 @@ workflow BULK_MARINE {
     gene_bed     // path: BED6 gene model file
     dbsnp_bed    // path: dbSNP BED file
     genepred     // path: genePred file for metaPlotR
+    fasta        // path: reference FASTA (for samtools calmd when BAMs lack MD tags)
 
     main:
 
@@ -97,7 +98,7 @@ workflow BULK_MARINE {
         .map { _id, meta, bam, bai, strand -> [ meta, bam, bai, strand ] }
 
     // ── MARINE edit calling ───────────────────────────────────────────────────
-    MARINE_BULK(ch_bams_with_strand, gene_bed)
+    MARINE_BULK(ch_bams_with_strand, fasta, gene_bed)
     ch_versions = ch_versions.mix(MARINE_BULK.out.versions)
 
     // ── featureCounts (gene expression) ──────────────────────────────────────

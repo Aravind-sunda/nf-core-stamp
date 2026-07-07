@@ -14,6 +14,8 @@
 PROFILES=(
     test_bulk_bam
     test_bulk_fastq
+    test_bulk_bam_flare
+    test_bulk_fastq_flare
     test_sc_bam
     test_sc_fastq
 )
@@ -62,3 +64,10 @@ done
 
 # Add the following line to specify the path to the marine_1.0.2.sif file or it will downlaod from docker hub
 # --marine_sif "/condo/brannanlab/tmhaxs421/singularity_cache/marine_1.0.2.sif" \
+
+# for PROFILE in "${PROFILES[@]}"; do
+# nextflow run /home/tmhaxs421/brannanlab/tmhaxs421/MARINE_NextFlow/nf-core-ribostamp/main.nf \
+#     --profile "${PROFILE},singularity" \
+#     -preview -with-dag dag_${PROFILE}.mmd \
+#     --sailor_snakemake_path "$SNAKEMAKE_PATH" \
+# done

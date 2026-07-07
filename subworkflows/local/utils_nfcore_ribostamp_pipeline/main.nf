@@ -199,6 +199,19 @@ def validateInputParameters() {
         if (params.run_sailor && !params.fasta) {
             error("--run_sailor true requires --fasta (genome FASTA for SAILOR's internal calmd step).")
         }
+        if (params.run_flare) {
+            // FLARE (RBP-STAMP) operates on SAILOR outputs, so SAILOR must run.
+            if (!params.run_sailor) {
+                error("--run_flare true requires --run_sailor true (FLARE identifies clusters from SAILOR edit calls).")
+            }
+            if (!params.flare_snakefile) {
+                error("--run_flare true requires --flare_snakefile (path to FLARE Snakefile).")
+            }
+            // Regions are either supplied pre-built or generated from the GTF.
+            if (!params.flare_regions && !params.gtf) {
+                error("--run_flare true requires either --flare_regions (pre-built regions folder) or --gtf (to generate one).")
+            }
+        }
         if (!params.gene_bed) {
             error("--mode bulk requires --gene_bed (BED6 gene model file).")
         }
@@ -216,6 +229,9 @@ def validateInputParameters() {
     }
 
     if (mode == 'sc') {
+        if (params.run_flare) {
+            error("--run_flare is only supported in --mode bulk (RBP-STAMP is bulk RNA-seq).")
+        }
         if (!params.fasta) {
             error("--mode sc requires --fasta (genome FASTA file).")
         }

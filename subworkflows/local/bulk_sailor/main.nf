@@ -80,5 +80,6 @@ workflow BULK_SAILOR {
 
     emit:
     ranked_beds = ch_ranked_beds               // [ meta, bed ] per sample
+    output_dir  = SAILOR.out.output_dir        // sailor_output/ folder (for downstream FLARE)
     versions    = ch_versions
 }

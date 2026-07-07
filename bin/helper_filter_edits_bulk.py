@@ -274,6 +274,28 @@ def main():
     df["edit_fraction"] = df["count"] / df["coverage"]
     print(f"Loaded {len(df):,} edit entries")
 
+    # ---- Zero-edit short-circuit --------------------------------------------
+    # A sample with no called edits (e.g. very low coverage) would otherwise crash
+    # in annotation (assigning column names to an empty intersect) or in the summary
+    # (division by len(df)==0). Write empty, schema-complete outputs and stop.
+    if len(df) == 0:
+        print("No edit sites in input — writing empty outputs, skipping filters and plots.")
+        for col in ("feature_name", "feature_type", "feature_strand"):
+            if col not in df.columns:
+                df[col] = pd.Series(dtype=object)
+        if args.output_dir:
+            final_path = os.path.join(args.output_dir, "filtered_edits.tsv")
+            df.to_csv(final_path, sep="\t", index=False)
+            print(f"Saved filtered → {final_path}")
+            summary = pd.DataFrame([
+                {"Step": "Raw input", "Edit entries": 0, "Removed from raw": 0, "% remaining": "n/a"}
+            ])
+            summary_path = os.path.join(args.output_dir, "filter_summary.tsv")
+            summary.to_csv(summary_path, sep="\t", index=False)
+            print(f"Saved summary  → {summary_path}")
+        print("\nDone.")
+        return
+
     # ---- Annotate if needed -------------------------------------------------
     required_annot_cols = {"feature_name", "feature_type", "feature_strand"}
     if not required_annot_cols.issubset(df.columns):
