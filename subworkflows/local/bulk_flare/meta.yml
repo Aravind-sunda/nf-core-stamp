@@ -1,0 +1,52 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/nf-core/modules/master/subworkflows/yaml-schema.json
+name: "bulk_flare"
+description: |
+  Run FLARE edit-cluster identification (RBP-STAMP) downstream of SAILOR.
+  For each sample, pairs the SAILOR ranked BED (STAMP sites) with that sample's
+  forward/reverse bigwigs and filtered-merged BAM (resolved from the SAILOR output
+  folder) plus the shared genome-level regions folder, and runs FLARE in
+  cluster-identification mode to call and score edited-region clusters.
+keywords:
+  - RNA editing
+  - RBP-STAMP
+  - FLARE
+  - peak calling
+  - Snakemake
+components:
+  - flare
+input:
+  - ch_ranked_beds:
+      type: list
+      description: |
+        Per-sample SAILOR ranked edit BED files: [ meta, ranked_bed ].
+        Used as the FLARE STAMP-sites input.
+  - ch_sailor_dir:
+      type: directory
+      description: |
+        The SAILOR output folder (sailor_output/). FLARE's per-sample bigwigs and
+        filtered-merged BAM are resolved from its 8_bw_and_bam/ subdirectory by sample ID.
+  - regions:
+      type: directory
+      description: |
+        FLARE regions folder (from generate_regions.py) for cluster-identification mode.
+  - fasta:
+      type: file
+      description: Reference genome FASTA.
+  - fasta_fai:
+      type: file
+      description: FASTA index (.fai), staged alongside fasta so pysam finds it.
+  - snakefile:
+      type: file
+      description: FLARE Snakefile path; its directory is bound into the Singularity container.
+output:
+  - scored_peaks:
+      type: list
+      description: |
+        Per-sample scored FLARE cluster/peak tables: [ meta, scored.tsv ].
+  - versions:
+      type: file
+      description: versions.yml files from all modules.
+authors:
+  - "@aravind.sunda"
+maintainers:
+  - "@aravind.sunda"
