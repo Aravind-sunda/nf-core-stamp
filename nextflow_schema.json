@@ -65,6 +65,12 @@
                     "default": true,
                     "description": "Run SAILOR Bayesian edit calling in bulk mode. Set to false to run MARINE only.",
                     "fa_icon": "fas fa-play-circle"
+                },
+                "run_flare": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Run FLARE edit-cluster identification (RBP-STAMP). Requires --run_sailor true, as FLARE operates on SAILOR outputs. Leave false for RiboSTAMP data.",
+                    "fa_icon": "fas fa-play-circle"
                 }
             }
         },
@@ -303,8 +309,52 @@
                 },
                 "sailor_singularity_bind": {
                     "type": "string",
-                    "description": "Comma-separated bind paths for SAILOR's internal Singularity calls (e.g. '/condo/brannanlab,/home/user/refs'). Must cover the locations of --fasta and --dbsnp_bed.",
+                    "description": "Comma-separated bind paths for SAILOR's internal Singularity calls (e.g. '/condo/brannanlab,/home/user/refs'). Must cover the locations of --fasta and --dbsnp_bed. Also applied to FLARE's internal Singularity calls.",
                     "fa_icon": "fas fa-link"
+                }
+            }
+        },
+        "flare_options": {
+            "title": "FLARE options",
+            "type": "object",
+            "fa_icon": "fas fa-fire",
+            "description": "Options for FLARE edit-cluster identification (RBP-STAMP). Only used when --mode bulk and --run_flare true. FLARE runs cluster-identification mode on SAILOR outputs; edit-fraction mode is intentionally not exposed (run it yourself downstream, as regions are experiment-specific).",
+            "properties": {
+                "flare_snakefile": {
+                    "type": "string",
+                    "format": "file-path",
+                    "exists": true,
+                    "description": "Path to the FLARE Snakefile. Defaults to the bundled copy at assets/workflow_FLARE/Snakefile. Override to use a different version.",
+                    "fa_icon": "fas fa-file-code"
+                },
+                "flare_regions": {
+                    "type": "string",
+                    "format": "directory-path",
+                    "description": "Pre-built FLARE regions folder produced by generate_regions.py (genome-level, ~8-10 GB, reusable across runs). If not supplied, it is generated on-the-fly from --gtf. Build once and reuse via this param to avoid the expensive regeneration.",
+                    "fa_icon": "fas fa-folder"
+                },
+                "flare_window_size": {
+                    "type": "integer",
+                    "default": 30,
+                    "description": "Sliding-window size (bp) for generate_regions.py. Only used when regions are auto-generated (no --flare_regions given).",
+                    "fa_icon": "fas fa-ruler-horizontal"
+                },
+                "flare_fdr": {
+                    "type": "number",
+                    "default": 0.1,
+                    "description": "FDR threshold used by FLARE to filter significant edit clusters/peaks.",
+                    "fa_icon": "fas fa-filter"
+                },
+                "flare_max_merge_dist": {
+                    "type": "integer",
+                    "default": 15,
+                    "description": "Maximum distance (bp) for merging adjacent significant peaks into a single cluster.",
+                    "fa_icon": "fas fa-compress-arrows-alt"
+                },
+                "editc_sif": {
+                    "type": "string",
+                    "description": "Path to a local editc (ekofman/editc:v2) Singularity SIF, used for FLARE region generation on offline HPC. Defaults to pulling docker.io/ekofman/editc:v2.",
+                    "fa_icon": "fas fa-box"
                 }
             }
         },
@@ -478,6 +528,7 @@
         { "$ref": "#/$defs/edit_calling_options" },
         { "$ref": "#/$defs/filtering_options" },
         { "$ref": "#/$defs/sailor_options" },
+        { "$ref": "#/$defs/flare_options" },
         { "$ref": "#/$defs/metagene_options" },
         { "$ref": "#/$defs/institutional_config_options" },
         { "$ref": "#/$defs/generic_options" }

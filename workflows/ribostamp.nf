@@ -6,7 +6,9 @@
 
 include { BULK_MARINE            } from '../subworkflows/local/bulk_marine/main'
 include { BULK_SAILOR            } from '../subworkflows/local/bulk_sailor/main'
+include { BULK_FLARE             } from '../subworkflows/local/bulk_flare/main'
 include { SC_MARINE              } from '../subworkflows/local/sc_marine/main'
+include { FLARE_GENERATE_REGIONS } from '../modules/local/flare_generate_regions/main'
 include { SAMTOOLS_FAIDX         } from '../modules/local/samtools_faidx/main'
 include { GUNZIP as GUNZIP_GTF      } from '../modules/local/gunzip/main'
 include { GUNZIP as GUNZIP_GENE_BED } from '../modules/local/gunzip/main'
@@ -118,6 +120,10 @@ workflow RIBOSTAMP {
         ? channel.value(file(params.sailor_snakefile, checkIfExists: true))
         : channel.empty()
 
+    def ch_flare_snakefile = params.flare_snakefile
+        ? channel.value(file(params.flare_snakefile, checkIfExists: true))
+        : channel.empty()
+
     def ch_cellranger_ref = params.cellranger_ref
         ? channel.value(file(params.cellranger_ref, checkIfExists: true))
         : channel.empty()
@@ -152,7 +158,8 @@ workflow RIBOSTAMP {
                 ch_gtf,
                 ch_gene_bed,
                 ch_dbsnp_bed,
-                ch_genepred
+                ch_genepred,
+                ch_fasta
             )
             ch_versions      = ch_versions.mix(BULK_MARINE.out.versions)
             ch_multiqc_files = ch_multiqc_files.mix(BULK_MARINE.out.multiqc)
@@ -222,6 +229,36 @@ workflow RIBOSTAMP {
                 ch_genepred
             )
             ch_versions = ch_versions.mix(BULK_SAILOR.out.versions)
+
+            // ── FLARE: SAILOR outputs → edit-cluster identification (RBP-STAMP)
+            // Requires SAILOR (validated in validateInputParameters), so it is
+            // nested here where BULK_SAILOR.out is guaranteed to exist.
+            if (params.run_flare) {
+
+                // Regions folder: reuse a pre-built one, or generate it from the GTF.
+                def ch_flare_regions
+                if (params.flare_regions) {
+                    ch_flare_regions = channel.value(file(params.flare_regions, checkIfExists: true))
+                } else {
+                    def ch_flare_scripts = channel.value(
+                        file("${projectDir}/assets/workflow_FLARE/scripts", checkIfExists: true)
+                    )
+                    FLARE_GENERATE_REGIONS(ch_gtf, params.flare_window_size, ch_flare_scripts)
+                    ch_versions = ch_versions.mix(FLARE_GENERATE_REGIONS.out.versions)
+                    // .first() → value channel so the regions folder broadcasts to every sample
+                    ch_flare_regions = FLARE_GENERATE_REGIONS.out.regions.first()
+                }
+
+                BULK_FLARE(
+                    BULK_SAILOR.out.ranked_beds,
+                    BULK_SAILOR.out.output_dir,
+                    ch_flare_regions,
+                    ch_fasta,
+                    ch_fasta_fai,
+                    ch_flare_snakefile
+                )
+                ch_versions = ch_versions.mix(BULK_FLARE.out.versions)
+            }
         }
     }
 
