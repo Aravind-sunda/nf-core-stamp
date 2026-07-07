@@ -2,7 +2,11 @@ repository_type: pipeline
 
 nf_core_version: 4.0.2
 
-lint: {}
+lint:
+  # The bundled FLARE Snakefile uses Snakemake brace-escapes for embedded
+  # awk — not Jinja template strings. Ignore it for the template_strings check.
+  template_strings:
+    - assets/workflow_FLARE/Snakefile
 
 template:
   org: nf-core
