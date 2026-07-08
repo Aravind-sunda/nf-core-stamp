@@ -1,11 +1,11 @@
 #!/usr/bin/env nextflow
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    nf-core/ribostamp
+    nf-core/stamp
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    Github : https://github.com/nf-core/ribostamp
-    Website: https://nf-co.re/ribostamp
-    Slack  : https://nfcore.slack.com/channels/ribostamp
+    Github : https://github.com/nf-core/stamp
+    Website: https://nf-co.re/stamp
+    Slack  : https://nfcore.slack.com/channels/stamp
 ----------------------------------------------------------------------------------------
 */
 
@@ -15,10 +15,10 @@
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 */
 
-include { RIBOSTAMP  } from './workflows/ribostamp'
-include { PIPELINE_INITIALISATION } from './subworkflows/local/utils_nfcore_ribostamp_pipeline'
-include { PIPELINE_COMPLETION     } from './subworkflows/local/utils_nfcore_ribostamp_pipeline'
-include { getGenomeAttribute      } from './subworkflows/local/utils_nfcore_ribostamp_pipeline'
+include { STAMP  } from './workflows/stamp'
+include { PIPELINE_INITIALISATION } from './subworkflows/local/utils_nfcore_stamp_pipeline'
+include { PIPELINE_COMPLETION     } from './subworkflows/local/utils_nfcore_stamp_pipeline'
+include { getGenomeAttribute      } from './subworkflows/local/utils_nfcore_stamp_pipeline'
 
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -40,7 +40,7 @@ params.fasta = getGenomeAttribute('fasta')
 //
 // WORKFLOW: Run main analysis pipeline depending on type of input
 //
-workflow NFCORE_RIBOSTAMP {
+workflow NFCORE_STAMP {
 
     take:
     samplesheet // channel: samplesheet read in from --input
@@ -50,7 +50,7 @@ workflow NFCORE_RIBOSTAMP {
     //
     // WORKFLOW: Run pipeline
     //
-    RIBOSTAMP (
+    STAMP (
         samplesheet,
         params.multiqc_config,
         params.multiqc_logo,
@@ -58,7 +58,7 @@ workflow NFCORE_RIBOSTAMP {
         params.outdir,
     )
     emit:
-    multiqc_report = RIBOSTAMP.out.multiqc_report // channel: /path/to/multiqc_report.html
+    multiqc_report = STAMP.out.multiqc_report // channel: /path/to/multiqc_report.html
 }
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -87,7 +87,7 @@ workflow {
     //
     // WORKFLOW: Run main workflow
     //
-    NFCORE_RIBOSTAMP (
+    NFCORE_STAMP (
         PIPELINE_INITIALISATION.out.samplesheet
     )
     //
@@ -99,7 +99,7 @@ workflow {
         params.plaintext_email,
         params.outdir,
         params.monochrome_logs,
-        NFCORE_RIBOSTAMP.out.multiqc_report
+        NFCORE_STAMP.out.multiqc_report
     )
 }
 

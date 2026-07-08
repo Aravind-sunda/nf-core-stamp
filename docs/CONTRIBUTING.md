@@ -3,18 +3,18 @@ title: Contributing
 markdownPlugin: checklist
 ---
 
-# `nf-core/ribostamp`: Contributing guidelines
+# `nf-core/stamp`: Contributing guidelines
 
 Hi there!
-Thanks for taking an interest in improving nf-core/ribostamp.
+Thanks for taking an interest in improving nf-core/stamp.
 
-This page describes the recommended nf-core way to contribute to both nf-core/ribostamp and nf-core pipelines in general, including:
+This page describes the recommended nf-core way to contribute to both nf-core/stamp and nf-core pipelines in general, including:
 
 - [General contribution guidelines](#general-contribution-guidelines): common procedures or guides across all nf-core pipelines.
-- [Pipeline-specific contribution guidelines](#pipeline-specific-contribution-guidelines): procedures or guides specific to the development conventions of nf-core/ribostamp.
+- [Pipeline-specific contribution guidelines](#pipeline-specific-contribution-guidelines): procedures or guides specific to the development conventions of nf-core/stamp.
 
 > [!NOTE]
-> If you need help using or modifying nf-core/ribostamp, ask on the nf-core Slack [#ribostamp](https://nfcore.slack.com/channels/ribostamp) channel ([join our Slack here](https://nf-co.re/join/slack)).
+> If you need help using or modifying nf-core/stamp, ask on the nf-core Slack [#stamp](https://nfcore.slack.com/channels/stamp) channel ([join our Slack here](https://nf-co.re/join/slack)).
 
 ## General contribution guidelines
 
@@ -23,8 +23,8 @@ This page describes the recommended nf-core way to contribute to both nf-core/ri
 To contribute code to any nf-core pipeline:
 
 - [ ] Ensure you have Nextflow, nf-core tools, and nf-test installed. See the [nf-core/tools repository](https://github.com/nf-core/tools) for instructions.
-- [ ] Check whether a GitHub [issue](https://github.com/nf-core/ribostamp/issues) about your idea already exists. If an issue does not exist, create one so that others are aware you are working on it.
-- [ ] [Fork](https://help.github.com/en/github/getting-started-with-github/fork-a-repo) the [nf-core/ribostamp repository](https://github.com/nf-core/ribostamp) to your GitHub account.
+- [ ] Check whether a GitHub [issue](https://github.com/nf-core/stamp/issues) about your idea already exists. If an issue does not exist, create one so that others are aware you are working on it.
+- [ ] [Fork](https://help.github.com/en/github/getting-started-with-github/fork-a-repo) the [nf-core/stamp repository](https://github.com/nf-core/stamp) to your GitHub account.
 - [ ] Create a branch on your forked repository and make your changes following [pipeline conventions](#pipeline-contribution-conventions) (if applicable).
 - [ ] To fix major bugs, name your branch `patch` and follow the [patch release](#patch-release) process.
 - [ ] Update relevant documentation within the `docs/` folder, use nf-core/tools to update `nextflow_schema.json`, and update `CITATIONS.md`.
@@ -49,17 +49,17 @@ For more detail, see the the [blog post](https://nf-co.re/blog/2026/statement-on
 
 ### Getting help
 
-For further information and help, see the [nf-core/ribostamp documentation](https://nf-co.re/ribostamp/usage) or ask on the nf-core [#ribostamp](https://nfcore.slack.com/channels/ribostamp) Slack channel ([join our Slack here](https://nf-co.re/join/slack)).
+For further information and help, see the [nf-core/stamp documentation](https://nf-co.re/stamp/usage) or ask on the nf-core [#stamp](https://nfcore.slack.com/channels/stamp) Slack channel ([join our Slack here](https://nf-co.re/join/slack)).
 
 ### GitHub Codespaces
 
-You can contribute to nf-core/ribostamp without installing a local development environment on your machine by using [GitHub Codespaces](https://github.com/codespaces).
+You can contribute to nf-core/stamp without installing a local development environment on your machine by using [GitHub Codespaces](https://github.com/codespaces).
 
 [GitHub Codespaces](https://github.com/codespaces) is an online developer environment that runs in your browser, complete with VS Code and a terminal.
 Most nf-core repositories include a devcontainer configuration, which creates a GitHub Codespaces environment specifically for Nextflow development.
 The environment includes pre-installed nf-core tools, Nextflow, and a few other helpful utilities via a Docker container.
 
-To get started, open the repository in [Codespaces](https://github.com/nf-core/ribostamp/codespaces).
+To get started, open the repository in [Codespaces](https://github.com/nf-core/stamp/codespaces).
 
 ### Testing
 
@@ -112,7 +112,7 @@ These tests are run with the latest available version of Nextflow and the minimu
 
 ### Pipeline contribution conventions
 
-nf-core semi-standardises how you write code and other contributions to make the nf-core/ribostamp code and processing logic more understandable for new contributors and to ensure quality.
+nf-core semi-standardises how you write code and other contributions to make the nf-core/stamp code and processing logic more understandable for new contributors and to ensure quality.
 
 #### Add a new pipeline step
 

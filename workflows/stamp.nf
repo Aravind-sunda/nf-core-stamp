@@ -8,7 +8,7 @@ include { MULTIQC                } from '../modules/nf-core/multiqc/main'
 include { paramsSummaryMap       } from 'plugin/nf-schema'
 include { paramsSummaryMultiqc   } from '../subworkflows/nf-core/utils_nfcore_pipeline'
 include { softwareVersionsToYAML } from '../subworkflows/nf-core/utils_nfcore_pipeline'
-include { methodsDescriptionText } from '../subworkflows/local/utils_nfcore_ribostamp_pipeline'
+include { methodsDescriptionText } from '../subworkflows/local/utils_nfcore_stamp_pipeline'
 
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -16,7 +16,7 @@ include { methodsDescriptionText } from '../subworkflows/local/utils_nfcore_ribo
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 */
 
-workflow RIBOSTAMP {
+workflow STAMP {
 
     take:
     ch_samplesheet // channel: samplesheet read in from --input
@@ -59,7 +59,7 @@ workflow RIBOSTAMP {
         .mix(topic_versions_string)
         .collectFile(
             storeDir: "${outdir}/pipeline_info",
-            name: 'nf_core_'  +  'ribostamp_software_'  + 'mqc_'  + 'versions.yml',
+            name: 'nf_core_'  +  'stamp_software_'  + 'mqc_'  + 'versions.yml',
             sort: true,
             newLine: true
         )
@@ -79,7 +79,7 @@ workflow RIBOSTAMP {
     MULTIQC(
         ch_multiqc_files.flatten().collect().map { files ->
             [
-                [id: 'ribostamp'],
+                [id: 'stamp'],
                 files,
                 multiqc_config
                     ? file(multiqc_config, checkIfExists: true)
