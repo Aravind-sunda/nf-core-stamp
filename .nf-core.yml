@@ -11,7 +11,7 @@ lint:
 template:
   org: nf-core
   name: stamp
-  description: A pipeline to process bulk and single cell ribo and RBP1 STAMP datasets
+  description: A pipeline to process bulk and single cell ribo and RBP STAMP datasets
   author: Aravind Sundaravadivelu
   version: 1.0.0dev
   force: true
