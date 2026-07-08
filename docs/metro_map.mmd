@@ -4,103 +4,157 @@
 %%metro logo_scale: 0.6
 %%metro legend: bl
 
-%%metro file: fastq_sc    | FASTQ
-%%metro file: fastq_in    | FASTQ
-%%metro file: bam_bulk_in | BAM  | Bulk BAM
-%%metro file: bam_sc_in   | BAM  | SC BAM
-%%metro file: marine_out  | TSV  | MARINE edits
-%%metro file: sailor_out  | BED  | Ranked BEDs
-%%metro file: sc_out      | TSV  | SC edits
+%% ── Metro lines (analysis routes) ──────────────────────────────────────────
+%%metro line: bulk_marine | Bulk · MARINE          | #2db572
+%%metro line: bulk_sailor | Bulk · SAILOR          | #e6842a
+%%metro line: bulk_flare  | Bulk · FLARE (RBP-STAMP)| #984ea3
+%%metro line: sc          | Single Cell · MARINE    | #0570b0
 
+%% ── Input / output termini ─────────────────────────────────────────────────
+%%metro files: fastq_in    | FASTQ | Bulk FASTQ
+%%metro files: fastq_sc    | FASTQ | SC FASTQ
+%%metro file:  bam_bulk_in | BAM   | Bulk BAM
+%%metro file:  bam_sc_in   | BAM   | SC BAM
+%%metro file:  gtf_in      | GTF   | Annotation
+%%metro file:  marine_out  | TSV   | MARINE edits
+%%metro files: sailor_out  | BED   | Ranked BEDs
+%%metro file:  flare_out   | TSV   | FLARE peaks
+%%metro file:  sc_out      | TSV   | SC edits
+%%metro file:  report_out  | HTML  | MultiQC
+
+%% ── Off-track stations (BAM-start entries + reference asset) ────────────────
 %%metro off_track: bam_bulk_in
 %%metro off_track: bam_sc_in
+%%metro off_track: flare_regions
 
-%%metro line: bulk_marine | Bulk · MARINE | #2db572
-%%metro line: bulk_sailor | Bulk · SAILOR | #e6842a
-%%metro line: sc          | Single Cell   | #0570b0
-
+%% ── Section grid (col,row,rowspan,colspan) ─────────────────────────────────
 %%metro grid: preprocessing   | 1,1,3,1
-%%metro grid: bulk_align      | 2,1,2,1
-%%metro grid: marine_bulk_sec | 3,1
-%%metro grid: sailor_sec      | 3,2
-%%metro grid: sc_marine_sec   | 2,3
+%%metro grid: bulk_strand      | 2,1,2,1
+%%metro grid: marine_bulk_sec  | 3,1,1,2
+%%metro grid: sailor_sec       | 3,2
+%%metro grid: flare_sec        | 4,2
+%%metro grid: sc_marine_sec    | 2,3
+%%metro grid: reports_sec      | 5,3
 
-%%metro interchange: infer_strand | bulk_marine | bulk_sailor
+%% ── Live-progress mapping (nf-metro serve -with-weblog) ─────────────────────
+%%metro process: fastqc       | .*:FASTQC$
+%%metro process: fastp        | .*:FASTP$
+%%metro process: star_align   | .*:STAR_ALIGN$
+%%metro process: cellranger   | .*:CELLRANGER$
+%%metro process: infer_strand | .*:INFER_STRANDEDNESS$
+%%metro process: marine_bulk  | .*:MARINE_BULK$
+%%metro process: featurecounts| .*:FEATURECOUNTS$
+%%metro process: merge_counts | .*:MERGE_COUNTS$
+%%metro process: filter_edits_b | .*:FILTER_EDITS_BULK$
+%%metro process: normalize_b  | .*:NORMALIZE_EDITS_BULK$
+%%metro process: metaplotr_b  | .*:METAPLOTR_BULK$
+%%metro process: sailor_run   | .*:SAILOR$
+%%metro process: metaplotr_s  | .*:METAPLOTR_SAILOR$
+%%metro process: flare_regions| .*:FLARE_GENERATE_REGIONS$
+%%metro process: flare_run    | .*:FLARE$
+%%metro process: marine_sc    | .*:MARINE_SC$
+%%metro process: filter_sc    | .*:FILTER_EDITS_SC$
+%%metro process: normalize_sc | .*:NORMALIZE_EDITS_SC$
+%%metro process: multiqc      | .*:MULTIQC$
 
 graph LR
+    %% ══ Pre-processing: QC, trimming & alignment ══════════════════════════
     subgraph preprocessing [Pre-processing]
-        %%metro entry: left | bulk_marine, bulk_sailor, sc
-        %%metro exit: right | bulk_marine, bulk_sailor, sc
+        %%metro entry: left  | bulk_marine, bulk_sailor, bulk_flare, sc
+        %%metro exit:  right | bulk_marine, bulk_sailor, bulk_flare, sc
         fastq_in[ ]
         fastq_sc[ ]
         fastqc[FastQC]
-        fastp[FastP]
+        fastp[fastp]
         star_align[STAR Align]
         cellranger[CellRanger]
-        fastq_in -->|bulk_marine,bulk_sailor| fastqc
-        fastqc -->|bulk_marine,bulk_sailor| fastp
-        fastp -->|bulk_marine,bulk_sailor| star_align
-        fastq_sc  -->|sc| cellranger
-        %%fastq_in -->|sc| cellranger
+        fastq_in -->|bulk_marine,bulk_sailor,bulk_flare| fastqc
+        fastqc   -->|bulk_marine,bulk_sailor,bulk_flare| fastp
+        fastp    -->|bulk_marine,bulk_sailor,bulk_flare| star_align
+        fastq_sc -->|sc| cellranger
     end
 
-    subgraph bulk_align [Bulk BAM · Strandedness]
-        %%metro entry: left | bulk_marine, bulk_sailor
-        %%metro exit: right | bulk_marine, bulk_sailor
+    %% ══ Strandedness inference (shared by all bulk routes) ════════════════
+    subgraph bulk_strand [Strandedness]
+        %%metro entry: left  | bulk_marine, bulk_sailor, bulk_flare
+        %%metro exit:  right | bulk_marine, bulk_sailor, bulk_flare
         bam_bulk_in[ ]
         infer_strand[Infer Strandedness]
-        bam_bulk_in -->|bulk_marine,bulk_sailor| infer_strand
+        bam_bulk_in -->|bulk_marine,bulk_sailor,bulk_flare| infer_strand
     end
 
+    %% ══ MARINE bulk edit-calling + expression normalisation ══════════════
     subgraph marine_bulk_sec [MARINE Bulk]
-        %%metro entry: left | bulk_marine
-        %%metro exit: right | bulk_marine
+        %%metro entry: left  | bulk_marine
+        %%metro exit:  right | bulk_marine
         marine_bulk[MARINE Bulk]
         featurecounts[featureCounts]
         merge_counts[Merge Counts]
         filter_edits_b[Filter Edits]
         normalize_b[Normalize Edits]
         metaplotr_b[metaPlotR]
-        multiqc_b[MultiQC]
         marine_out[ ]
-        marine_bulk -->|bulk_marine| featurecounts
-        marine_bulk -->|bulk_marine| filter_edits_b
+        marine_bulk   -->|bulk_marine| featurecounts
+        marine_bulk   -->|bulk_marine| filter_edits_b
         featurecounts -->|bulk_marine| merge_counts
-        merge_counts -->|bulk_marine| normalize_b
-        filter_edits_b -->|bulk_marine| normalize_b
-        normalize_b -->|bulk_marine| metaplotr_b
-        metaplotr_b -->|bulk_marine| multiqc_b
-        metaplotr_b -->|bulk_marine| marine_out
+        merge_counts  -->|bulk_marine| normalize_b
+        filter_edits_b-->|bulk_marine| normalize_b
+        normalize_b   -->|bulk_marine| metaplotr_b
+        metaplotr_b   -->|bulk_marine| marine_out
     end
 
+    %% ══ SAILOR ranked edit sites ═════════════════════════════════════════
     subgraph sailor_sec [SAILOR]
-        %%metro entry: left | bulk_sailor
-        %%metro exit: right | bulk_sailor
+        %%metro entry: left  | bulk_sailor, bulk_flare
+        %%metro exit:  right | bulk_flare
         sailor_run[SAILOR]
         metaplotr_s[metaPlotR]
         sailor_out[ ]
-        sailor_run -->|bulk_sailor| metaplotr_s
+        sailor_run  -->|bulk_sailor| metaplotr_s
         metaplotr_s -->|bulk_sailor| sailor_out
     end
 
+    %% ══ FLARE edit-cluster identification (RBP-STAMP) ════════════════════
+    subgraph flare_sec [FLARE]
+        %%metro entry: left | bulk_flare
+        gtf_in[ ]
+        flare_regions[Generate Regions]
+        flare_run[FLARE]
+        flare_out[ ]
+        gtf_in        -->|bulk_flare| flare_regions
+        flare_regions -->|bulk_flare| flare_run
+        flare_run     -->|bulk_flare| flare_out
+    end
+
+    %% ══ Single-cell MARINE ═══════════════════════════════════════════════
     subgraph sc_marine_sec [Single Cell MARINE]
-        %%metro entry: left | sc
-        %%metro exit: right | sc
+        %%metro entry: left  | sc
+        %%metro exit:  right | sc
         bam_sc_in[ ]
         marine_sc[MARINE SC]
         filter_sc[Filter Edits SC]
         normalize_sc[Normalize Edits SC]
-        multiqc_sc[MultiQC]
         sc_out[ ]
-        bam_sc_in -->|sc| marine_sc
-        marine_sc -->|sc| filter_sc
-        filter_sc -->|sc| normalize_sc
-        normalize_sc -->|sc| multiqc_sc
+        bam_sc_in    -->|sc| marine_sc
+        marine_sc    -->|sc| filter_sc
+        filter_sc    -->|sc| normalize_sc
         normalize_sc -->|sc| sc_out
     end
 
-    %% ── Inter-section edges ──────────────────────────────────────────────
-    star_align   -->|bulk_marine,bulk_sailor| infer_strand
+    %% ══ Unified reporting ════════════════════════════════════════════════
+    subgraph reports_sec [Reporting]
+        %%metro entry: top  | bulk_marine
+        %%metro entry: left | sc
+        multiqc[MultiQC]
+        report_out[ ]
+        multiqc -->|bulk_marine,sc| report_out
+    end
+
+    %% ── Inter-section edges ───────────────────────────────────────────────
+    star_align   -->|bulk_marine,bulk_sailor,bulk_flare| infer_strand
     infer_strand -->|bulk_marine| marine_bulk
-    infer_strand -->|bulk_sailor| sailor_run
+    infer_strand -->|bulk_sailor,bulk_flare| sailor_run
+    sailor_run   -->|bulk_flare| flare_run
     cellranger   -->|sc| marine_sc
+    metaplotr_b  -->|bulk_marine| multiqc
+    normalize_sc -->|sc| multiqc

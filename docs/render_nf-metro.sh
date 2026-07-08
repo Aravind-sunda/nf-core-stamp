@@ -1,23 +1,39 @@
-module load mamba 
+#!/usr/bin/env bash
+# ─────────────────────────────────────────────────────────────────────────────
+#  Render the nf-core/ribostamp metro map with nf-metro 1.1.0
+#  Docs / directive reference: https://github.com/seqeralabs/nf-metro
+#
+#  nf-metro 1.1.0 CLI changes vs 0.7.2 used previously:
+#    • --no-straight-diamonds        → replaced by  --diamond-style [straight|symmetric]
+#      (straight = keep top branch on the main track; symmetric = fan branches evenly)
+#    • --center-ports                → unchanged (still valid)
+#    • --theme / --logo / --format   → unchanged
+#    • --validate (on render)        → new: runs the geometry oracle on the drawn SVG
+# ─────────────────────────────────────────────────────────────────────────────
+set -euo pipefail
+
+module load mamba
 mamba activate
 mamba activate nextflow
 
-cd /home/tmhaxs421/brannanlab/tmhaxs421/MARINE_NextFlow/nf-core-ribostamp/docs
+cd "$(dirname "${BASH_SOURCE[0]}")"
 
-# Validate first (catches syntax errors without rendering)
 nf-metro validate metro_map.mmd
 
-# Render as SVG (static, for README/docs)
 nf-metro render metro_map.mmd \
     --theme nfcore \
-    --no-straight-diamonds \
+    --diamond-style symmetric \
     --center-ports \
+    --validate \
     -o images/ribostamp_metro.svg \
     --logo images/nf-core-ribostamp_logo_dark.png
 
-# Render as interactive HTML (pan/zoom, click legend to isolate lines)
+# Render as interactive HTML (pan/zoom, hover stations, click legend to isolate a line).
 nf-metro render metro_map.mmd \
     --theme nfcore \
+    --diamond-style straight \
+    --center-ports \
     --format html \
-    -o images/ribostamp_metro.html
+    -o images/ribostamp_metro.html \
+    --logo images/nf-core-ribostamp_logo_dark.png
     
