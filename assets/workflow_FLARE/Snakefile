@@ -72,7 +72,7 @@ else:
     # Normal edit c calculation
     overall_output = [final_bedgraph, merged_filtered_region_outputs, scored_peaks]
     regions = config["regions"]  
-    regions_file = []  # LOCAL PATCH (ribostamp): was '' — Snakemake >=9 rejects empty-string rule inputs; see LOCAL_MODIFICATIONS.md
+    regions_file = []  # LOCAL PATCH (stamp): was '' — Snakemake >=9 rejects empty-string rule inputs; see LOCAL_MODIFICATIONS.md
 
     editc_regions_input.append(regions)
     split_regions_chunks = glob('{}/*'.format(regions))

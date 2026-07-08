@@ -2,7 +2,7 @@
 
 This is a patched copy of upstream [YeoLab/FLARE](https://github.com/YeoLab/FLARE).
 Re-apply these when re-vendoring a newer version. Find edits in code with:
-`grep -rn "LOCAL PATCH (ribostamp)" assets/workflow_FLARE/`
+`grep -rn "LOCAL PATCH (stamp)" assets/workflow_FLARE/`
 
 | Date | File:line | Change | Why |
 |------|-----------|--------|-----|

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ─────────────────────────────────────────────────────────────────────────────
-#  Render the nf-core/ribostamp metro map with nf-metro 1.1.0
+#  Render the nf-core/stamp metro map with nf-metro 1.1.0
 #  Docs / directive reference: https://github.com/seqeralabs/nf-metro
 #
 #  nf-metro 1.1.0 CLI changes vs 0.7.2 used previously:
@@ -25,8 +25,8 @@ nf-metro render metro_map.mmd \
     --diamond-style symmetric \
     --center-ports \
     --validate \
-    -o images/ribostamp_metro.svg \
-    --logo images/nf-core-ribostamp_logo_dark.png
+    -o images/stamp_metro.svg \
+    --logo images/nf-core-stamp_logo_dark.png
 
 # Render as interactive HTML (pan/zoom, hover stations, click legend to isolate a line).
 nf-metro render metro_map.mmd \
@@ -34,6 +34,6 @@ nf-metro render metro_map.mmd \
     --diamond-style straight \
     --center-ports \
     --format html \
-    -o images/ribostamp_metro.html \
-    --logo images/nf-core-ribostamp_logo_dark.png
+    -o images/stamp_metro.html \
+    --logo images/nf-core-stamp_logo_dark.png
     
