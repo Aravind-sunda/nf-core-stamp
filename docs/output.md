@@ -1,4 +1,4 @@
-# nf-core/ribostamp: Output
+# nf-core/stamp: Output
 
 ## Introduction
 

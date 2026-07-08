@@ -1,6 +1,6 @@
 {
-    "name": "nf-core/ribostamp",
-    "homePage": "https://github.com/nf-core/ribostamp",
+    "name": "nf-core/stamp",
+    "homePage": "https://github.com/nf-core/stamp",
     "repos": {
         "https://github.com/nf-core/modules.git": {
             "modules": {

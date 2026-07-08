@@ -1,21 +1,16 @@
-repository_type: pipeline
-
-nf_core_version: 4.0.2
-
 lint:
-  # The bundled FLARE Snakefile uses Snakemake brace-escapes for embedded
-  # awk — not Jinja template strings. Ignore it for the template_strings check.
   template_strings:
     - assets/workflow_FLARE/Snakefile
-
+nf_core_version: 4.0.2
+repository_type: pipeline
 template:
-  org: nf-core
-  name: stamp
-  description: A pipeline to process bulk and single cell ribo and RBP STAMP datasets
   author: Aravind Sundaravadivelu
-  version: 1.0.0dev
-  force: true
+  description: A pipeline to process bulk and single cell ribo and RBP STAMP datasets
+  force: false
+  is_nfcore: true
+  name: stamp
+  org: nf-core
   outdir: .
   skip_features:
     - gpu
-  is_nfcore: true
+  version: 1.0.0dev
