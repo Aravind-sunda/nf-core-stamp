@@ -10,6 +10,11 @@
 #SBATCH --mail-user=asundaravadivelu@houstonmethodist.org
 #SBATCH --output=slurm_%u_%x_%j.log
 
+# ── Removing old directories - for a clean run ───────────────────────────────
+rm -rf work/
+rm -rf results*
+rm -rf .nextflow*
+
 # ── Profiles to run — comment out any you want to skip ───────────────────────
 PROFILES=(
     test_bulk_bam
