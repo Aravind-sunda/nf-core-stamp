@@ -13,7 +13,7 @@
 
 # make_test_dataset_flare.sh
 # Builds a small bulk RBP-STAMP (RBFOX2-BAMR) test dataset for exercising the
-# ribostamp SAILOR → FLARE path start to finish, in both BAM-start and
+# stamp SAILOR → FLARE path start to finish, in both BAM-start and
 # FASTQ-start modes. Subsamples the source BAMs to chr1, then derives matching
 # FASTQs. All chr1 reference/annotation/dbSNP/STAR-index files are REUSED from
 # assets/test_data/refs/ (built by bin/make_test_dataset.sh) — this script only
@@ -148,7 +148,7 @@ validate_config() {
 # MAIN
 # ─────────────────────────────────────────────────────────────────────────────
 
-log "ribostamp FLARE (RBP-STAMP) test dataset builder"
+log "stamp FLARE (RBP-STAMP) test dataset builder"
 log "Chromosome: ${CHROM} | Bulk target: ${BULK_TARGET} reads/sample | Threads: ${THREADS}"
 log "Reusing shared chr1 refs from: ${REFDIR}"
 echo ""

@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=ribostamp_test
+#SBATCH --job-name=stamp_test
 #SBATCH --nodes=1
 #SBATCH --partition=defq
 #SBATCH --ntasks-per-node=1
@@ -29,8 +29,8 @@ mamba activate nextflow
 export NXF_SINGULARITY_CACHEDIR=/condo/brannanlab/tmhaxs421/singularity_cache
 mkdir -p "$NXF_SINGULARITY_CACHEDIR"
 
-PIPELINE_DIR="/condo/brannanlab/tmhaxs421/MARINE_NextFlow/nf-core-ribostamp"
-OUTPUT_DIR="/condo/brannanlab/tmhaxs421/MARINE_NextFlow/nfcore-ribostamp-run"
+PIPELINE_DIR="/condo/brannanlab/tmhaxs421/MARINE_NextFlow/nf-core-stamp"
+OUTPUT_DIR="/condo/brannanlab/tmhaxs421/MARINE_NextFlow/nfcore-stamp-run"
 
 # ── System-specific paths — edit these for your cluster ──────────────────────
 # Path to the snakemake binary used by SAILOR.
@@ -45,7 +45,7 @@ SNAKEMAKE_PATH="/cm/shared/apps/snakemake/9.13.4/bin/snakemake"
 # ── Loop ─────────────────────────────────────────────────────────────────────
 for PROFILE in "${PROFILES[@]}"; do
     echo "======================================================"
-    echo "  ribostamp test: ${PROFILE}"
+    echo "  stamp test: ${PROFILE}"
     echo "  started: $(date)"
     echo "======================================================"
 
@@ -56,7 +56,7 @@ for PROFILE in "${PROFILES[@]}"; do
         -resume
 
     echo "======================================================"
-    echo "  ribostamp test: ${PROFILE} — DONE ($(date))"
+    echo "  stamp test: ${PROFILE} — DONE ($(date))"
     echo "======================================================"
     echo ""
 done
@@ -66,7 +66,7 @@ done
 # --marine_sif "/condo/brannanlab/tmhaxs421/singularity_cache/marine_1.0.2.sif" \
 
 # for PROFILE in "${PROFILES[@]}"; do
-# nextflow run /home/tmhaxs421/brannanlab/tmhaxs421/MARINE_NextFlow/nf-core-ribostamp/main.nf \
+# nextflow run /home/tmhaxs421/brannanlab/tmhaxs421/MARINE_NextFlow/nf-core-stamp/main.nf \
 #     --profile "${PROFILE},singularity" \
 #     -preview -with-dag dag_${PROFILE}.mmd \
 #     --sailor_snakemake_path "$SNAKEMAKE_PATH" \
