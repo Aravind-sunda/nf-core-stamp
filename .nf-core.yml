@@ -10,8 +10,8 @@ lint:
 
 template:
   org: nf-core
-  name: ribostamp
-  description: A pipeline to process bulk and single cell riboSTAMP datasets
+  name: stamp
+  description: A pipeline to process bulk and single cell ribo and RBP1 STAMP datasets
   author: Aravind Sundaravadivelu
   version: 1.0.0dev
   force: true
