@@ -8,15 +8,67 @@
 
 > Di Tommaso P, Chatzou M, Floden EW, Barja PP, Palumbo E, Notredame C. Nextflow enables reproducible computational workflows. Nat Biotechnol. 2017 Apr 11;35(4):316-319. doi: 10.1038/nbt.3820. PubMed PMID: 28398311.
 
+## Assay
+
+- [STAMP / Ribo-STAMP](https://pubmed.ncbi.nlm.nih.gov/33963284/)
+
+  > Brannan KW, Chaim IA, Marina RJ, Yee BA, Kofman ER, Lorenz DA, Jagannatha P, Dong KD, Madrigal AA, Underwood JG, Yeo GW. Robust single-cell discovery of RNA targets of RNA-binding proteins and ribosomes. Nat Methods. 2021 May;18(5):507-519. doi: 10.1038/s41592-021-01128-0. PubMed PMID: 33963284; PubMed Central PMCID: PMC8148648.
+
+## Edit calling and cluster identification
+
+- [MARINE](https://github.com/YeoLab/MARINE)
+
+  > MARINE: Multi-core Algorithm for Rapid Identification of Nucleotide Edits. Yeo Lab, University of California San Diego.
+
+- [SAILOR](https://pubmed.ncbi.nlm.nih.gov/28925356/)
+
+  > Deffit SN, Yee BA, Manning AC, Rajendren S, Vadlamani P, Wheeler EC, Domissy A, Washburn MC, Yeo GW, Hundley HA. The C. elegans neural editome reveals an ADAR target mRNA required for proper chemotaxis. eLife. 2017 Sep 19;6:e28625. doi: 10.7554/eLife.28625. PubMed PMID: 28925356; PubMed Central PMCID: PMC5644944.
+
+- [FLARE](https://pubmed.ncbi.nlm.nih.gov/37784060/)
+
+  > Kofman E, Yee B, Medina-Munoz HC, Yeo GW. FLARE: a fast and flexible workflow for identifying RNA editing foci. BMC Bioinformatics. 2023 Oct 2;24(1):370. doi: 10.1186/s12859-023-05452-4. PubMed PMID: 37784060; PubMed Central PMCID: PMC10544219.
+
+- [Snakemake](https://pubmed.ncbi.nlm.nih.gov/34035898/)
+
+  > Mölder F, Jablonski KP, Letcher B, Hall MB, Tomkins-Tinch CH, Sochat V, Forster J, Lee S, Twardziok SO, Kanitz A, Wilm A, Holtgrewe M, Rahmann S, Nahnsen S, Köster J. Sustainable data analysis with Snakemake. F1000Res. 2021 Jan 18;10:33. doi: 10.12688/f1000research.29032.2. PubMed PMID: 34035898; PubMed Central PMCID: PMC8114187.
+
 ## Pipeline tools
 
 - [FastQC](https://www.bioinformatics.babraham.ac.uk/projects/fastqc/)
 
-> Andrews, S. (2010). FastQC: A Quality Control Tool for High Throughput Sequence Data [Online].
+  > Andrews, S. (2010). FastQC: A Quality Control Tool for High Throughput Sequence Data [Online].
+
+- [fastp](https://pubmed.ncbi.nlm.nih.gov/30423086/)
+
+  > Chen S, Zhou Y, Chen Y, Gu J. fastp: an ultra-fast all-in-one FASTQ preprocessor. Bioinformatics. 2018 Sep 1;34(17):i884-i890. doi: 10.1093/bioinformatics/bty560. PubMed PMID: 30423086; PubMed Central PMCID: PMC6129281.
+
+- [STAR](https://pubmed.ncbi.nlm.nih.gov/23104886/)
+
+  > Dobin A, Davis CA, Schlesinger F, Drenkow J, Zaleski C, Jha S, Batut P, Chaisson M, Gingeras TR. STAR: ultrafast universal RNA-seq aligner. Bioinformatics. 2013 Jan 1;29(1):15-21. doi: 10.1093/bioinformatics/bts635. PubMed PMID: 23104886; PubMed Central PMCID: PMC3530905.
+
+- [SAMtools](https://pubmed.ncbi.nlm.nih.gov/33590861/)
+
+  > Danecek P, Bonfield JK, Liddle J, Marshall J, Ohan V, Pollard MO, Whitwham A, Keane T, McCarthy SA, Davies RM, Li H. Twelve years of SAMtools and BCFtools. Gigascience. 2021 Feb 16;10(2):giab008. doi: 10.1093/gigascience/giab008. PubMed PMID: 33590861; PubMed Central PMCID: PMC7931819.
+
+- [RSeQC](https://pubmed.ncbi.nlm.nih.gov/22743226/)
+
+  > Wang L, Wang S, Li W. RSeQC: quality control of RNA-seq experiments. Bioinformatics. 2012 Aug 15;28(16):2184-5. doi: 10.1093/bioinformatics/bts356. PubMed PMID: 22743226.
+
+- [Subread / featureCounts](https://pubmed.ncbi.nlm.nih.gov/24227677/)
+
+  > Liao Y, Smyth GK, Shi W. featureCounts: an efficient general purpose program for assigning sequence reads to genomic features. Bioinformatics. 2014 Apr 1;30(7):923-30. doi: 10.1093/bioinformatics/btt656. PubMed PMID: 24227677.
+
+- [metaPlotR](https://pubmed.ncbi.nlm.nih.gov/28158328/)
+
+  > Olarerin-George AO, Jaffrey SR. MetaPlotR: a Perl/R pipeline for plotting metagenes of nucleotide modifications and other transcriptomic sites. Bioinformatics. 2017 May 15;33(10):1563-1564. doi: 10.1093/bioinformatics/btx002. PubMed PMID: 28158328; PubMed Central PMCID: PMC5423454.
+
+- [Cell Ranger](https://pubmed.ncbi.nlm.nih.gov/28091601/)
+
+  > Zheng GX, Terry JM, Belgrader P, Ryvkin P, Bent ZW, Wilson R, Ziraldo SB, Wheeler TD, McDermott GP, Zhu J, Gregory MT, Shuga J, Montesclaros L, Underwood JG, Masquelier DA, Nishimura SY, Schnall-Levin M, Wyatt PW, Hindson CM, Bharadwaj R, Wong A, Ness KD, Beppu LW, Deeg HJ, McFarland C, Loeb KR, Valente WJ, Ericson NG, Stevens EA, Radich JP, Mikkelsen TS, Hindson BJ, Bielas JH. Massively parallel digital transcriptional profiling of single cells. Nat Commun. 2017 Jan 16;8:14049. doi: 10.1038/ncomms14049. PubMed PMID: 28091601; PubMed Central PMCID: PMC5241818.
 
 - [MultiQC](https://pubmed.ncbi.nlm.nih.gov/27312411/)
 
-> Ewels P, Magnusson M, Lundin S, Käller M. MultiQC: summarize analysis results for multiple tools and samples in a single report. Bioinformatics. 2016 Oct 1;32(19):3047-8. doi: 10.1093/bioinformatics/btw354. Epub 2016 Jun 16. PubMed PMID: 27312411; PubMed Central PMCID: PMC5039924.
+  > Ewels P, Magnusson M, Lundin S, Käller M. MultiQC: summarize analysis results for multiple tools and samples in a single report. Bioinformatics. 2016 Oct 1;32(19):3047-8. doi: 10.1093/bioinformatics/btw354. Epub 2016 Jun 16. PubMed PMID: 27312411; PubMed Central PMCID: PMC5039924.
 
 ## Software packaging/containerisation tools
 

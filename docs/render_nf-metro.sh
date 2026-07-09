@@ -28,6 +28,17 @@ nf-metro render metro_map.mmd \
     -o images/stamp_metro.svg \
     --logo images/nf-core-stamp_logo_dark.png
 
+# Animated variant embedded in the README. --embed-font inlines Inter so the SVG
+# renders identically on GitHub, which serves it without access to local fonts.
+nf-metro render metro_map.mmd \
+    --theme nfcore \
+    --diamond-style symmetric \
+    --center-ports \
+    --animate \
+    --embed-font \
+    -o images/stamp_metro_animated.svg \
+    --logo images/nf-core-stamp_logo_dark.png
+
 # Render as interactive HTML (pan/zoom, hover stations, click legend to isolate a line).
 nf-metro render metro_map.mmd \
     --theme nfcore \
