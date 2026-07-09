@@ -1,8 +1,8 @@
 {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
-    "$id": "https://raw.githubusercontent.com/nf-core/ribostamp/master/assets/schema_input.json",
-    "title": "nf-core/ribostamp pipeline - params.input schema",
-    "description": "Schema for the file provided with params.input. Columns required depend on --mode and start point — see usage docs.",
+    "$id": "https://raw.githubusercontent.com/nf-core/stamp/master/assets/schema_input.json",
+    "title": "nf-core/stamp pipeline - params.input schema",
+    "description": "Schema for the file provided with params.input",
     "type": "array",
     "items": {
         "type": "object",

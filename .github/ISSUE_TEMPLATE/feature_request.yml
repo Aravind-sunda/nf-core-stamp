@@ -1,5 +1,5 @@
 name: Feature request
-description: Suggest an idea for the nf-core/ribostamp pipeline
+description: Suggest an idea for the nf-core/stamp pipeline
 labels: enhancement
 body:
   - type: textarea
