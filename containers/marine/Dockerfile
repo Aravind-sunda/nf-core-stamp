@@ -15,7 +15,7 @@
 
 # note this refers to the marine-main repo. either copy that repo here or use the following command to refer to the marine-main repo directly:
 # docker build --platform linux/amd64 \
-#     -f /path/to/nf-core-ribostamp/containers/marine/Dockerfile \
+#     -f /path/to/nf-core-stamp/containers/marine/Dockerfile \
 #     -t aravindsundaravadivelu/marine:1.0.2 \
 #     /home/tmhaxs421/brannanlab/tmhaxs421/MARINE_NextFlow/trial_pipeline/containers/MARINE-main
 
