@@ -99,7 +99,7 @@ The primary outputs are per-sample filtered edit sites normalised to gene expres
 
 ## Credits
 
-nf-core/stamp was originally written by Aravind Sundaravadivelu.
+nf-core/stamp was originally written and tested by Aravind Sundaravadivelu and  Dr. Luiz H. Maniero 
 
 We thank the following people for their extensive assistance in the development of this pipeline:
 
