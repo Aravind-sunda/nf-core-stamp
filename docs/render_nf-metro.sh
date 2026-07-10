@@ -9,6 +9,20 @@
 #    • --center-ports                → unchanged (still valid)
 #    • --theme / --logo / --format   → unchanged
 #    • --validate (on render)        → new: runs the geometry oracle on the drawn SVG
+#
+#  Layout flags shared by every render below:
+#    • --line-spread centered  balance bundles about the midline; cuts the canvas
+#      ~20% versus the default 'bundle' with no loss of clarity.
+#    • --directional           chevrons along every route, so the FASTQ/BAM inputs
+#      and every downstream hop show flow direction.
+#
+#  Deliberately NOT used:
+#    • --compact-offsets  saves no canvas here (measured: identical 1568x689 with
+#      and without) and opens a one-track gap between the SAILOR and FLARE lines
+#      in the pre-processing bundle, because each station is sized only for the
+#      lines crossing it.
+#    • --line-spread rails  rejected by nf-metro's routing invariants on this map
+#      (bundle-order flip at bam_bulk_in -> infer_strand).
 # ─────────────────────────────────────────────────────────────────────────────
 set -euo pipefail
 
@@ -22,8 +36,10 @@ nf-metro validate metro_map.mmd
 
 nf-metro render metro_map.mmd \
     --theme nfcore \
-    --diamond-style symmetric \
+    --diamond-style straight \
     --center-ports \
+    --line-spread centered \
+    --directional \
     --validate \
     -o images/stamp_metro.svg \
     --logo images/nf-core-stamp_logo_dark.png
@@ -32,8 +48,10 @@ nf-metro render metro_map.mmd \
 # renders identically on GitHub, which serves it without access to local fonts.
 nf-metro render metro_map.mmd \
     --theme nfcore \
-    --diamond-style symmetric \
+    --diamond-style straight \
     --center-ports \
+    --line-spread centered \
+    --directional \
     --animate \
     --embed-font \
     -o images/stamp_metro_animated.svg \
@@ -44,6 +62,8 @@ nf-metro render metro_map.mmd \
     --theme nfcore \
     --diamond-style straight \
     --center-ports \
+    --line-spread centered \
+    --directional \
     --format html \
     -o images/stamp_metro.html \
     --logo images/nf-core-stamp_logo_dark.png

@@ -224,7 +224,16 @@ Five filters apply here, each switchable: multiple conversion types per barcode 
 
 </details>
 
-[MultiQC](http://multiqc.info) collates QC from FastQC, fastp, STAR and featureCounts into a single report, alongside the software versions used in the run.
+[MultiQC](http://multiqc.info) collates QC into a single report, alongside the software versions used in the run. What it contains depends on the route taken:
+
+| Route             | Sections in the report                                                  |
+| ----------------- | ----------------------------------------------------------------------- |
+| Bulk, FASTQ start | FastQC, fastp, STAR, RSeQC (strandedness), featureCounts                 |
+| Bulk, BAM start   | RSeQC, featureCounts                                                     |
+| `sc`, FASTQ start | Cell Ranger                                                              |
+| `sc`, BAM start   | Software versions only                                                   |
+
+The edit-calling steps — MARINE, SAILOR, FLARE — and the filter, normalise and metaPlotR steps produce no MultiQC-parsable output, so they do not appear in the report.
 
 ### Pipeline information
 
