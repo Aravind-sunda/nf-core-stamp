@@ -16,6 +16,7 @@ include { FEATURECOUNTS        } from '../../../modules/local/featurecounts/main
 include { MERGE_COUNTS         } from '../../../modules/local/merge_counts/main'
 include { FILTER_EDITS_BULK    } from '../../../modules/local/filter_edits_bulk/main'
 include { NORMALIZE_EDITS_BULK } from '../../../modules/local/normalize_edits_bulk/main'
+include { MERGE_NORMALIZED_BULK } from '../../../modules/local/merge_normalized_bulk/main'
 include { METAPLOTR_BULK       } from '../../../modules/local/metaplotr_bulk/main'
 
 workflow BULK_MARINE {
@@ -129,6 +130,10 @@ workflow BULK_MARINE {
 
     NORMALIZE_EDITS_BULK(ch_normalize_input)
     ch_versions = ch_versions.mix(NORMALIZE_EDITS_BULK.out.versions)
+
+    // ── Combine per-sample normalized tables into gene x sample matrices ──────
+    MERGE_NORMALIZED_BULK(NORMALIZE_EDITS_BULK.out.normalized.map { _m, f -> f }.collect())
+    ch_versions = ch_versions.mix(MERGE_NORMALIZED_BULK.out.versions)
 
     // ── metaPlotR metagene distances ──────────────────────────────────────────
     METAPLOTR_BULK(NORMALIZE_EDITS_BULK.out.bedgraph_dir, genepred)

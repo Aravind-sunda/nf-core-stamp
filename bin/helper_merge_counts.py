@@ -31,7 +31,15 @@ def parse_args():
     parser.add_argument("--indir",   required=True, help="Directory containing per-sample featureCounts .txt files")
     parser.add_argument("--outfile", required=True, help="Output TSV path for the merged count matrix")
     parser.add_argument("--suffix",  default=".featurecounts.txt", help="File suffix to glob for (default: .featurecounts.txt)")
-    parser.add_argument("--drop-annotation", action="store_true", help="Drop Chr/Start/End/Strand/Length columns from output")
+    # Deliberately not exposed by the pipeline: MERGE_COUNTS never passes this.
+    # helper_normalize_edits_bulk.py reads Length from this same matrix to compute
+    # EPKM/EPKMR, and its process_feature_counts() drops the annotation columns
+    # unconditionally — so a matrix built with this flag breaks NORMALIZE_EDITS_BULK.
+    # Kept for standalone use only.
+    parser.add_argument("--drop-annotation", action="store_true",
+                        help="Drop Chr/Start/End/Strand/Length columns from output. "
+                             "Standalone use only — the pipeline never sets this, because "
+                             "NORMALIZE_EDITS_BULK requires the Length column.")
     return parser.parse_args()
 
 

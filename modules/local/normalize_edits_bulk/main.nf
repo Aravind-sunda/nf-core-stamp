@@ -14,8 +14,10 @@ process NORMALIZE_EDITS_BULK {
     tuple val(meta), val(strandedness), path(filtered_edits), path(counts_matrix)
 
     output:
-    tuple val(meta), path("bedgraphs/"), emit: bedgraph_dir
-    path "versions.yml",                 emit: versions
+    tuple val(meta), path("bedgraphs/"),                    emit: bedgraph_dir
+    tuple val(meta), path("*.EPR_EPKM_normalized.tsv"),     emit: normalized
+    tuple val(meta), path("*.edits.length_annotated.tsv"),  emit: length_annotated
+    path "versions.yml",                                    emit: versions
 
     script:
     def prefix = meta.id
