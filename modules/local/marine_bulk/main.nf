@@ -10,10 +10,13 @@ process MARINE_BULK {
     label 'process_marine_bulk'
     // MARINE names its own output folder after the sample (--output_folder below), so
     // publishing into a further ${meta.id} directory produced 04_marine/<sample>/<sample>/.
-    // Publish into 04_marine and let that folder supply the sample level. The pattern is
-    // required: without it versions.yml from every sample would collide at 04_marine/.
-    // versions.yml is still emitted below and aggregated into pipeline_info/.
-    publishDir { "${params.outdir}/04_marine" }, mode: params.publish_dir_mode, pattern: "${meta.id}"
+    // Publish into 04_marine and let MARINE's folder supply the sample level.
+    // saveAs drops versions.yml, which would otherwise collide across samples at
+    // 04_marine/; it is still emitted below and aggregated into pipeline_info/.
+    // Must be saveAs rather than `pattern`: pattern is evaluated eagerly, where meta
+    // is not in scope, so referencing it there fails with "No such variable: meta".
+    publishDir { "${params.outdir}/04_marine" }, mode: params.publish_dir_mode,
+        saveAs: { filename -> filename.equals('versions.yml') ? null : filename }
 
     // No conda directive: MARINE has no Bioconda package.
     // Use -profile singularity or -profile docker; -profile conda is not supported for this process.

@@ -5,11 +5,14 @@
 process MARINE_SC {
     tag "${meta.id}"
     label 'process_marine_sc'
-    // MARINE writes into a folder named after the sample (--output_folder below), and
-    // 02_marine_sc supplies nothing further, so results land in 02_marine_sc/<sample>/.
-    // The pattern is required: without it versions.yml from every sample would collide
-    // at 02_marine_sc/. versions.yml is still emitted and aggregated into pipeline_info/.
-    publishDir { "${params.outdir}/02_marine_sc" }, mode: params.publish_dir_mode, pattern: "${meta.id}"
+    // MARINE writes into a folder named after the sample (--output_folder below), so
+    // results land directly in 02_marine_sc/<sample>/ rather than a nested subfolder.
+    // saveAs drops versions.yml, which would otherwise collide across samples at
+    // 02_marine_sc/; it is still emitted below and aggregated into pipeline_info/.
+    // Must be saveAs rather than `pattern`: pattern is evaluated eagerly, where meta
+    // is not in scope, so referencing it there fails with "No such variable: meta".
+    publishDir { "${params.outdir}/02_marine_sc" }, mode: params.publish_dir_mode,
+        saveAs: { filename -> filename.equals('versions.yml') ? null : filename }
 
     // No conda directive: MARINE has no Bioconda package.
     // Use -profile singularity or -profile docker; -profile conda is not supported for this process.
