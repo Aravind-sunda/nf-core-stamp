@@ -281,6 +281,13 @@ rule filter_known_snp:
     params:
         run_time="2:00:00",
         threads="1"
+    # LOCAL PATCH (stamp): claim half the cores so at most 2 of these run concurrently.
+    # filter_known_snp.py loads the whole dbSNP BED into memory (50-100 GB for hg38).
+    # No rule in this Snakefile declares a threads directive, so Snakemake treated
+    # every job as 1 thread and ran --cores of them at once, OOM-killing the step.
+    # Throttling here rather than lowering --cores keeps every other rule fully parallel.
+    threads:
+        max(1, workflow.cores // 2)
     singularity:
         "docker://brianyee/sailor:1.99.0"
     shell:

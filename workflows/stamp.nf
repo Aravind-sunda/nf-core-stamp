@@ -9,6 +9,7 @@ include { BULK_SAILOR            } from '../subworkflows/local/bulk_sailor/main'
 include { BULK_FLARE             } from '../subworkflows/local/bulk_flare/main'
 include { SC_MARINE              } from '../subworkflows/local/sc_marine/main'
 include { FLARE_GENERATE_REGIONS } from '../modules/local/flare_generate_regions/main'
+include { PREPARE_DBSNP          } from '../modules/local/prepare_dbsnp/main'
 include { SAMTOOLS_FAIDX         } from '../modules/local/samtools_faidx/main'
 include { GUNZIP as GUNZIP_GTF      } from '../modules/local/gunzip/main'
 include { GUNZIP as GUNZIP_GENE_BED } from '../modules/local/gunzip/main'
@@ -112,9 +113,15 @@ workflow STAMP {
         }
     }
 
-    def ch_dbsnp_bed = params.dbsnp_bed
-        ? channel.value(file(params.dbsnp_bed, checkIfExists: true))
-        : channel.empty()
+    // Sorted once here rather than per sample: every consumer (bulk/sc filters and
+    // SAILOR) shares the same prepared file. .first() converts the process output
+    // back into a value channel so it can broadcast to all of them.
+    def ch_dbsnp_bed = channel.empty()
+    if (params.dbsnp_bed) {
+        PREPARE_DBSNP(channel.value(file(params.dbsnp_bed, checkIfExists: true)))
+        ch_dbsnp_bed = PREPARE_DBSNP.out.bed.first()
+        ch_versions  = ch_versions.mix(PREPARE_DBSNP.out.versions)
+    }
 
     def ch_snakefile = params.sailor_snakefile
         ? channel.value(file(params.sailor_snakefile, checkIfExists: true))
