@@ -6,58 +6,143 @@
 
 ## Introduction
 
-<!-- TODO nf-core: Add documentation about anything specific to running your pipeline. For general topics, please point to (and add to) the main nf-core website. -->
+nf-core/stamp analyses STAMP experiments, in which an RNA base editor deposits C-to-U (or A-to-I) edits on the transcripts it contacts. Which analysis you get is controlled by two things: `--mode`, which selects bulk or single-cell processing, and a set of `--run_*` toggles that switch individual edit callers on and off.
+
+| Assay              | Parameters                                    | What you get                                             |
+| ------------------ | --------------------------------------------- | -------------------------------------------------------- |
+| Ribo-STAMP (bulk)  | `--mode bulk` (defaults)                      | Edits per gene, normalised to expression                  |
+| RBP-STAMP (bulk)   | `--mode bulk --run_flare`                     | The above, plus FDR-scored edit clusters (binding sites)  |
+| Single-cell STAMP  | `--mode sc`                                   | Per-cell-barcode edit calls, normalised to UMI counts     |
+
+The bulk toggles are `--run_marine` (default `true`) and `--run_sailor` (default `true`). MARINE produces per-site edit calls and gene-level quantification; SAILOR produces confidence-ranked BED files. `--run_flare` builds on SAILOR's output and therefore requires `--run_sailor true`; it is bulk-only. Leave `--run_flare false` (the default) for Ribo-STAMP.
+
+`--edit_type` must match your base editor: `C>T` for APOBEC1 (the default), `A>G` for ADAR.
 
 ## Samplesheet input
 
-You will need to create a samplesheet with information about the samples you would like to analyse before running the pipeline. Use this parameter to specify its location. It has to be a comma-separated file with 3 columns, and a header row as shown in the examples below.
+The pipeline takes a single comma-separated samplesheet via `--input`. There is one samplesheet format, and the **columns you fill in determine the start point**. Unused columns may be omitted entirely or left empty.
 
 ```bash
 --input '[path to samplesheet file]'
 ```
 
-### Multiple runs of the same sample
+Relative paths inside the samplesheet are resolved against the samplesheet's own directory, so a samplesheet and its data can be moved together.
 
-The `sample` identifiers have to be the same when you have re-sequenced the same sample more than once e.g. to increase sequencing depth. The pipeline will concatenate the raw reads before performing any downstream analysis. Below is an example for the same sample sequenced across 3 lanes:
+### Accepted column combinations
 
-```csv title="samplesheet.csv"
-sample,fastq_1,fastq_2
-CONTROL_REP1,AEG588A1_S1_L002_R1_001.fastq.gz,AEG588A1_S1_L002_R2_001.fastq.gz
-CONTROL_REP1,AEG588A1_S1_L003_R1_001.fastq.gz,AEG588A1_S1_L003_R2_001.fastq.gz
-CONTROL_REP1,AEG588A1_S1_L004_R1_001.fastq.gz,AEG588A1_S1_L004_R2_001.fastq.gz
+Each row must match exactly one of the four combinations below. Any other combination is rejected with an explicit error naming the offending sample, so a typo fails immediately rather than silently changing what runs.
+
+| Mode   | Start point | Required columns                        | Must be absent                        |
+| ------ | ----------- | --------------------------------------- | ------------------------------------- |
+| `bulk` | FASTQ       | `sample`, `fastq_1`, `library_type`      | `bam`, `fastq_dir`, `matrix_dir`      |
+| `bulk` | BAM         | `sample`, `bam`, `library_type`           | `fastq_1`, `fastq_2`, `fastq_dir`, `matrix_dir` |
+| `sc`   | FASTQ       | `sample`, `fastq_dir`                    | `bam`, `fastq_1`, `fastq_2`, `library_type`, `matrix_dir` |
+| `sc`   | BAM         | `sample`, `bam`, `matrix_dir`             | `fastq_1`, `fastq_2`, `library_type`, `fastq_dir` |
+
+For bulk FASTQ, `fastq_2` is required when `library_type` is `PE` and must be absent when it is `SE`.
+
+| Column         | Description                                                                                                                       |
+| -------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `sample`       | Sample name. Must be unique. Spaces are converted to underscores (`_`).                                                            |
+| `fastq_1`      | Path to R1 FASTQ. Must be gzipped, ending `.fastq.gz` or `.fq.gz`.                                                                 |
+| `fastq_2`      | Path to R2 FASTQ, for paired-end bulk libraries only.                                                                              |
+| `bam`          | Path to a coordinate-sorted, indexed BAM. The `.bai` must sit next to it.                                                          |
+| `library_type` | `SE` or `PE`. Bulk only.                                                                                                          |
+| `fastq_dir`    | Directory of 10x FASTQs following the `SAMPLE_S1_L001_R1_001.fastq.gz` convention. Single-cell FASTQ start only.                    |
+| `matrix_dir`   | Path to a Cell Ranger `filtered_feature_bc_matrix` directory. Single-cell BAM start only; Cell Ranger generates it on FASTQ start. |
+
+### Examples
+
+Bulk, FASTQ start, mixed single- and paired-end:
+
+```csv title="samplesheet_bulk_fastq.csv"
+sample,fastq_1,fastq_2,library_type
+CONTROL_REP1,ctrl_rep1_R1.fastq.gz,ctrl_rep1_R2.fastq.gz,PE
+CONTROL_REP2,ctrl_rep2_R1.fastq.gz,,SE
+DOX_REP1,dox_rep1_R1.fastq.gz,dox_rep1_R2.fastq.gz,PE
 ```
 
-### Full samplesheet
+Bulk, BAM start:
 
-The pipeline will auto-detect whether a sample is single- or paired-end using the information provided in the samplesheet. The samplesheet can have as many columns as you desire, however, there is a strict requirement for the first 3 columns to match those defined in the table below.
-
-A final samplesheet file consisting of both single- and paired-end data may look something like the one below. This is for 6 samples, where `TREATMENT_REP3` has been sequenced twice.
-
-```csv title="samplesheet.csv"
-sample,fastq_1,fastq_2
-CONTROL_REP1,AEG588A1_S1_L002_R1_001.fastq.gz,AEG588A1_S1_L002_R2_001.fastq.gz
-CONTROL_REP2,AEG588A2_S2_L002_R1_001.fastq.gz,AEG588A2_S2_L002_R2_001.fastq.gz
-CONTROL_REP3,AEG588A3_S3_L002_R1_001.fastq.gz,AEG588A3_S3_L002_R2_001.fastq.gz
-TREATMENT_REP1,AEG588A4_S4_L003_R1_001.fastq.gz,
-TREATMENT_REP2,AEG588A5_S5_L003_R1_001.fastq.gz,
-TREATMENT_REP3,AEG588A6_S6_L003_R1_001.fastq.gz,
-TREATMENT_REP3,AEG588A6_S6_L004_R1_001.fastq.gz,
+```csv title="samplesheet_bulk_bam.csv"
+sample,bam,library_type
+CONTROL_REP1,ctrl_rep1.sorted.bam,SE
+DOX_REP1,dox_rep1.sorted.bam,SE
 ```
 
-| Column    | Description                                                                                                                                                                            |
-| --------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `sample`  | Custom sample name. This entry will be identical for multiple sequencing libraries/runs from the same sample. Spaces in sample names are automatically converted to underscores (`_`). |
-| `fastq_1` | Full path to FastQ file for Illumina short reads 1. File has to be gzipped and have the extension ".fastq.gz" or ".fq.gz".                                                             |
-| `fastq_2` | Full path to FastQ file for Illumina short reads 2. File has to be gzipped and have the extension ".fastq.gz" or ".fq.gz".                                                             |
+Single-cell, FASTQ start (Cell Ranger runs):
 
-An [example samplesheet](../assets/samplesheet.csv) has been provided with the pipeline.
+```csv title="samplesheet_sc_fastq.csv"
+sample,fastq_dir
+STAMP_10X_1,/data/fastqs/STAMP_10X_1/
+```
+
+Single-cell, BAM start (Cell Ranger already run):
+
+```csv title="samplesheet_sc_bam.csv"
+sample,bam,matrix_dir
+STAMP_10X_1,/data/cr/STAMP_10X_1/outs/possorted_genome_bam.bam,/data/cr/STAMP_10X_1/outs/filtered_feature_bc_matrix
+```
+
+Example samplesheets are bundled under [`assets/samplesheets/`](../assets/samplesheets/).
+
+> [!NOTE]
+> The pipeline does not merge multiple rows sharing a `sample` name. If you sequenced a library across several lanes, concatenate the FASTQs before running.
+
+## Reference files
+
+| Parameter      | Required for                          | Notes                                                                        |
+| -------------- | ------------------------------------- | ---------------------------------------------------------------------------- |
+| `--fasta`      | All modes                             | Genome FASTA. Used for `samtools calmd`, SAILOR and FLARE.                    |
+| `--gtf`        | `--run_marine`, and FLARE region generation | Gene annotation, plain or gzipped.                                        |
+| `--gene_bed`   | All modes                             | BED6 gene models, for RSeQC and edit annotation.                              |
+| `--dbsnp_bed`  | All modes                             | dbSNP BED, for filtering known germline variants.                             |
+| `--star_index` | Bulk FASTQ start                      | Pre-built STAR index directory.                                              |
+| `--cellranger_ref` | Single-cell FASTQ start           | Pre-built Cell Ranger reference.                                             |
+| `--genome`     | `--run_marine`                        | Selects a bundled metaPlotR genePred (`hg19`, `hg38`, `hg38_V44`, `mm10`, `mm39`). Override with `--genepred`. |
+
+BAMs must carry `MD` tags for MARINE to detect edits. If they do not, the pipeline runs `samtools calmd` automatically, which needs `--fasta` to match the reference the BAM was aligned to.
+
+## Running SAILOR and FLARE
+
+SAILOR and FLARE are Snakemake workflows bundled under `assets/`. Unlike every other step, they are **not** wrapped in a Nextflow container: Snakemake launches its own Singularity containers, and nesting containers does not work. This means the host running these processes needs `snakemake` and `singularity` available. The pipeline is tested against Snakemake 9.13.4.
+
+| Parameter                    | Purpose                                                                                       |
+| ---------------------------- | --------------------------------------------------------------------------------------------- |
+| `--sailor_snakemake_path`    | Path to the `snakemake` binary if it is not on `PATH`. Also used by FLARE.                     |
+| `--sailor_singularity_cache` | Directory for Snakemake's Singularity images. Defaults to `$NXF_SINGULARITY_CACHEDIR`.         |
+| `--sailor_singularity_bind`  | Comma-separated bind paths. Must cover the locations of `--fasta` and `--dbsnp_bed`.           |
+
+### FLARE regions
+
+FLARE scores edit clusters against a genome-wide set of sliding windows. Build these once with `--flare_regions` pointing at a folder produced by FLARE's `generate_regions.py`; if you omit it, the pipeline generates the folder from `--gtf` on the fly. The folder is large (roughly 8–10 GB for a human genome), so generating it once and reusing it across runs is worth the setup.
+
+Cluster scoring is tuned with `--flare_fdr` (default `0.1`) and `--flare_max_merge_dist` (default `15` bp).
+
+> [!NOTE]
+> Only FLARE's cluster-identification mode is wired into this pipeline. FLARE's edit-fraction mode depends heavily on how you define your regions of interest, so run it yourself against the [upstream FLARE workflow](https://github.com/YeoLab/FLARE) if you need it.
+
+## Running on an HPC without internet access
+
+If your compute nodes cannot reach the internet, pre-download all containers into a local cache and point the pipeline at it. Follow [`RUNNING_ON_HPC.md`](../RUNNING_ON_HPC.md), then use `--marine_sif`, `--ribostamp_utils_sif` and `--editc_sif` to override the Docker Hub images with local `.sif` files.
 
 ## Running the pipeline
 
 The typical command for running the pipeline is as follows:
 
 ```bash
-nextflow run nf-core/stamp --input ./samplesheet.csv --outdir ./results --genome GRCh37 -profile docker
+nextflow run nf-core/stamp \
+    -profile docker \
+    --mode bulk \
+    --input ./samplesheet.csv \
+    --outdir ./results \
+    --fasta hg38.fa \
+    --gtf gencode.v44.annotation.gtf.gz \
+    --gene_bed hg38_genes.bed \
+    --dbsnp_bed hg38_dbsnp.bed \
+    --star_index star_index_hg38/ \
+    --genome hg38 \
+    --edit_type 'C>T'
 ```
 
 This will launch the pipeline with the `docker` configuration profile. See below for more information about profiles.
@@ -87,9 +172,10 @@ nextflow run nf-core/stamp -profile docker -params-file params.yaml
 with:
 
 ```yaml title="params.yaml"
+mode: 'bulk'
 input: './samplesheet.csv'
 outdir: './results/'
-genome: 'GRCh37'
+genome: 'hg38'
 <...>
 ```
 

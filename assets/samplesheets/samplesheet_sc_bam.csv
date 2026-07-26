@@ -1,0 +1,3 @@
+sample,bam,matrix_dir
+STAMP_10X_1,/data/cellranger/STAMP_10X_1/outs/possorted_genome_bam.bam,/data/cellranger/STAMP_10X_1/outs/filtered_feature_bc_matrix
+STAMP_10X_2,/data/cellranger/STAMP_10X_2/outs/possorted_genome_bam.bam,/data/cellranger/STAMP_10X_2/outs/filtered_feature_bc_matrix

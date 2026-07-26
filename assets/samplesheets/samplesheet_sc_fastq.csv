@@ -1,0 +1,3 @@
+sample,fastq_dir
+STAMP_10X_1,/data/fastqs/STAMP_10X_1/
+STAMP_10X_2,/data/fastqs/STAMP_10X_2/

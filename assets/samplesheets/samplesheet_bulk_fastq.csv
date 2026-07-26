@@ -1,0 +1,5 @@
+sample,fastq_1,fastq_2,library_type
+CONTROL_REP1,ctrl_rep1_R1.fastq.gz,ctrl_rep1_R2.fastq.gz,PE
+CONTROL_REP2,ctrl_rep2_R1.fastq.gz,,SE
+DOX_REP1,dox_rep1_R1.fastq.gz,dox_rep1_R2.fastq.gz,PE
+DOX_REP2,dox_rep2_R1.fastq.gz,,SE
