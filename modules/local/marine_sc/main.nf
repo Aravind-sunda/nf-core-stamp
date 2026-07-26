@@ -5,7 +5,11 @@
 process MARINE_SC {
     tag "${meta.id}"
     label 'process_marine_sc'
-    publishDir { "${params.outdir}/02_marine_sc/${meta.id}" }, mode: params.publish_dir_mode
+    // MARINE writes into a folder named after the sample (--output_folder below), and
+    // 02_marine_sc supplies nothing further, so results land in 02_marine_sc/<sample>/.
+    // The pattern is required: without it versions.yml from every sample would collide
+    // at 02_marine_sc/. versions.yml is still emitted and aggregated into pipeline_info/.
+    publishDir { "${params.outdir}/02_marine_sc" }, mode: params.publish_dir_mode, pattern: "${meta.id}"
 
     // No conda directive: MARINE has no Bioconda package.
     // Use -profile singularity or -profile docker; -profile conda is not supported for this process.
@@ -17,8 +21,8 @@ process MARINE_SC {
     path gene_bed
 
     output:
-    tuple val(meta), path("marine_output/"), emit: results
-    path "versions.yml",                     emit: versions
+    tuple val(meta), path("${meta.id}/"), emit: results
+    path "versions.yml",                  emit: versions
 
     script:
     def prefix = meta.id
@@ -51,7 +55,7 @@ process MARINE_SC {
     # Run MARINE in single-cell mode (strandedness=2 is always correct for 10x STAMP)
     python /opt/MARINE/marine.py \\
         --bam_filepath            "\${FINAL_BAM}" \\
-        --output_folder           marine_output \\
+        --output_folder           ${prefix} \\
         --barcode_whitelist_file  "\${BARCODES}" \\
         --annotation_bedfile_path ${gene_bed} \\
         --barcode_tag             ${params.barcode_tag} \\
