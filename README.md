@@ -29,9 +29,12 @@ The pipeline covers three assay designs from a single entry point:
 - **RBP-STAMP** (bulk) — RBP binding sites, called as edit clusters with [FLARE](https://doi.org/10.1186/s12859-023-05452-4).
 - **Single-cell STAMP** — per-cell edit calls from 10x Genomics libraries.
 
-![nf-core/stamp metro map](docs/images/stamp_metro_animated.svg)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/stamp_metro_animated_dark.svg">
+  <img alt="nf-core/stamp metro map" src="docs/images/stamp_metro_animated_light.svg">
+</picture>
 
-> In case the image above is not loading, please have a look at the [static version](docs/images/stamp_metro.svg) or the [interactive version](docs/images/stamp_metro.html).
+> In case the image above is not loading, please have a look at the static version ([light](docs/images/stamp_metro_light.svg) / [dark](docs/images/stamp_metro_dark.svg)) or the interactive version ([light](docs/images/stamp_metro_light.html) / [dark](docs/images/stamp_metro_dark.html)).
 
 1. Read QC ([`FastQC`](https://www.bioinformatics.babraham.ac.uk/projects/fastqc/))
 2. Adapter and quality trimming ([`fastp`](https://github.com/OpenGene/fastp))
