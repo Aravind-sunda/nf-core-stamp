@@ -6,7 +6,7 @@ process MERGE_NORMALIZED_BULK {
     publishDir "${params.outdir}/06_filter_normalize/combined", mode: params.publish_dir_mode
 
     conda 'conda-forge::python=3.8 conda-forge::pandas=2.0'
-    container "docker.io/aravindsundaravadivelu/ribostamp_utils:1.0.0"
+    container { params.ribostamp_utils_sif as String ?: 'docker.io/aravindsundaravadivelu/ribostamp_utils:1.0.0' }
 
     input:
     path normalized_files  // list of all *.EPR_EPKM_normalized.tsv files

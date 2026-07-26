@@ -8,7 +8,7 @@ process FILTER_EDITS_SC {
     publishDir { "${params.outdir}/03_filter_sc/${meta.id}" }, mode: params.publish_dir_mode
 
     conda 'conda-forge::python>=3.8 conda-forge::pandas>=2.0 bioconda::pybedtools>=0.9 conda-forge::matplotlib-base>=3.7'
-    container "docker.io/aravindsundaravadivelu/ribostamp_utils:1.0.0"
+    container { params.ribostamp_utils_sif as String ?: 'docker.io/aravindsundaravadivelu/ribostamp_utils:1.0.0' }
 
     input:
     tuple val(meta), path(marine_dir)

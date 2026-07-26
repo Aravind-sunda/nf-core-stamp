@@ -9,7 +9,7 @@ process PREPARE_DBSNP {
     label 'process_low'
 
     conda 'conda-forge::coreutils=9.1'
-    container "docker.io/aravindsundaravadivelu/ribostamp_utils:1.0.0"
+    container { params.ribostamp_utils_sif as String ?: 'docker.io/aravindsundaravadivelu/ribostamp_utils:1.0.0' }
 
     input:
     path dbsnp_bed

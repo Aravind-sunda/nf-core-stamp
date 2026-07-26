@@ -7,7 +7,7 @@ process NORMALIZE_EDITS_BULK {
     publishDir { "${params.outdir}/06_filter_normalize/${meta.id}/normalized" }, mode: params.publish_dir_mode
 
     conda 'conda-forge::python=3.8 conda-forge::pandas=2.0 conda-forge::matplotlib-base=3.7'
-    container "docker.io/aravindsundaravadivelu/ribostamp_utils:1.0.0"
+    container { params.ribostamp_utils_sif as String ?: 'docker.io/aravindsundaravadivelu/ribostamp_utils:1.0.0' }
 
     input:
     // combined by .combine() in subworkflow: matrix is broadcast 1-to-many across samples
