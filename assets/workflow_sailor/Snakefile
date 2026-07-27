@@ -160,6 +160,15 @@ rule make_bigwigs:
         threads="1",
         output_folder=os.path.join(config["output_dir"], "8_bw_and_bam"),
         sample="{sample}"
+    # LOCAL PATCH (stamp): claim every core so only one of these runs at a time.
+    # bam_to_bw.sh writes a shared 8_bw_and_bam/chrom.sizes and reads it back a line
+    # later, so two concurrent jobs let one truncate the file while the other is
+    # reading it. bedGraphToBigWig then aborts with "chr1 is not found in chromosome
+    # sizes file" and, because the script has no `set -e`, still exits 0 — Snakemake
+    # reports the job as successful with missing output. Must be the full core count:
+    # anything less still permits two jobs to overlap.
+    threads:
+        workflow.cores
     singularity:
         "docker://ekofman/editc:v3"
     shell:

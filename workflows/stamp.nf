@@ -89,8 +89,8 @@ workflow STAMP {
 
     // GTF and BED: decompress on-the-fly if .gz so that tools that don't
     // support gzipped inputs (RSeQC infer_experiment.py, MARINE, etc.) receive
-    // a plain file. .first() converts the single-element process output queue
-    // channel back into a value channel for broadcasting to all consumers.
+    // a plain file. The input is a value channel, so the output is one too and
+    // broadcasts to all consumers as-is — adding .first() here only warns.
     def ch_gtf = channel.empty()
     if (params.gtf) {
         if (params.gtf.endsWith('.gz')) {
@@ -114,12 +114,12 @@ workflow STAMP {
     }
 
     // Sorted once here rather than per sample: every consumer (bulk/sc filters and
-    // SAILOR) shares the same prepared file. .first() converts the process output
-    // back into a value channel so it can broadcast to all of them.
+    // SAILOR) shares the same prepared file. The input is a value channel, so the
+    // output is one too and already broadcasts to every consumer — no .first().
     def ch_dbsnp_bed = channel.empty()
     if (params.dbsnp_bed) {
         PREPARE_DBSNP(channel.value(file(params.dbsnp_bed, checkIfExists: true)))
-        ch_dbsnp_bed = PREPARE_DBSNP.out.bed.first()
+        ch_dbsnp_bed = PREPARE_DBSNP.out.bed
         ch_versions  = ch_versions.mix(PREPARE_DBSNP.out.versions)
     }
 
@@ -252,8 +252,9 @@ workflow STAMP {
                     )
                     FLARE_GENERATE_REGIONS(ch_gtf, params.flare_window_size, ch_flare_scripts)
                     ch_versions = ch_versions.mix(FLARE_GENERATE_REGIONS.out.versions)
-                    // .first() → value channel so the regions folder broadcasts to every sample
-                    ch_flare_regions = FLARE_GENERATE_REGIONS.out.regions.first()
+                    // All inputs are value channels, so regions is one too and already
+                    // broadcasts to every sample — adding .first() here only warns.
+                    ch_flare_regions = FLARE_GENERATE_REGIONS.out.regions
                 }
 
                 BULK_FLARE(
