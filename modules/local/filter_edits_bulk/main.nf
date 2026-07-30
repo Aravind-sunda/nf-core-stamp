@@ -16,6 +16,10 @@ process FILTER_EDITS_BULK {
 
     output:
     tuple val(meta), val(strandedness), path("filtered_edits.tsv"), emit: filtered
+    tuple val(meta), path("filter_summary.tsv"),                    emit: summary
+    // plots/ is created before the zero-edit short-circuit, so it always exists
+    // (possibly empty) and needs no optional flag.
+    tuple val(meta), path("plots/"),                                emit: plots
     path "versions.yml",                                            emit: versions
 
     script:

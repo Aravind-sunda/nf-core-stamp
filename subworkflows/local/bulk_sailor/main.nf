@@ -12,19 +12,22 @@
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 */
 
-include { SAILOR            } from '../../../modules/local/sailor/main'
-include { METAPLOTR_SAILOR  } from '../../../modules/local/metaplotr_sailor/main'
+include { SAILOR                  } from '../../../modules/local/sailor/main'
+include { METAPLOTR_SAILOR        } from '../../../modules/local/metaplotr_sailor/main'
+include { NORMALIZE_EDITS_SAILOR  } from '../../../modules/local/normalize_edits_sailor/main'
 
 workflow BULK_SAILOR {
 
     take:
-    ch_all_bams  // channel: [ meta, bam, bai ] — all bulk BAMs for this run
-    strandedness // val: consensus strandedness integer (0/1/2), pre-resolved by caller
-    fasta        // path: reference FASTA (for SAILOR Snakemake rules)
-    fasta_fai    // path: FASTA index (.fai) — staged alongside fasta so bam_to_bw.sh finds it
-    dbsnp_bed    // path: dbSNP BED for SNP filtering
-    snakefile    // path: SAILOR Snakefile
-    genepred     // path: genePred file for metaPlotR
+    ch_all_bams   // channel: [ meta, bam, bai ] — all bulk BAMs for this run
+    strandedness  // val: consensus strandedness integer (0/1/2), pre-resolved by caller
+    counts_matrix // path: merged featureCounts matrix from BULK_PREPROCESS
+    fasta         // path: reference FASTA (for SAILOR Snakemake rules)
+    fasta_fai     // path: FASTA index (.fai) — staged alongside fasta so bam_to_bw.sh finds it
+    dbsnp_bed     // path: dbSNP BED for SNP filtering
+    snakefile     // path: SAILOR Snakefile
+    gene_bed      // path: BED6 gene model, for annotating ranked sites to genes
+    genepred      // path: genePred file for metaPlotR
 
     main:
 
@@ -77,6 +80,17 @@ workflow BULK_SAILOR {
     // strandedness is a val (broadcast to each queue channel item automatically)
     METAPLOTR_SAILOR(ch_ranked_beds, strandedness, genepred)
     ch_versions = ch_versions.mix(METAPLOTR_SAILOR.out.versions)
+
+    // ── Annotate ranked sites to genes and normalise to expression ───────────
+    // SAILOR names its samples after the BAM file, so the id above still carries a
+    // '.bam' suffix. featureCounts columns use the clean sample name, so strip it
+    // here rather than renaming ch_ranked_beds (that would rename metaPlotR outputs).
+    def ch_normalize_input = ch_ranked_beds
+        .map { meta, bed -> [ [id: meta.id.replaceAll(/\.bam$/, '')], bed ] }
+        .combine(counts_matrix)
+
+    NORMALIZE_EDITS_SAILOR(ch_normalize_input, strandedness, gene_bed)
+    ch_versions = ch_versions.mix(NORMALIZE_EDITS_SAILOR.out.versions)
 
     emit:
     ranked_beds = ch_ranked_beds               // [ meta, bed ] per sample

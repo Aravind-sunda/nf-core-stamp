@@ -289,6 +289,15 @@
             "fa_icon": "fas fa-ship",
             "description": "Options for the SAILOR Bayesian edit-calling Snakemake pipeline. Only used when --mode bulk and --run_sailor true.",
             "properties": {
+                "sailor_conf": {
+                    "type": "number",
+                    "default": 0.5,
+                    "minimum": 0,
+                    "maximum": 1,
+                    "description": "Minimum SAILOR confidence score for an edit site to enter EPR/EPKM normalization.",
+                    "help_text": "SAILOR scores each site with a Bayesian posterior confidence between 0 and 1. Sites below this threshold are excluded from NORMALIZE_EDITS_SAILOR. This does not affect the ranked BED files themselves, nor the metaPlotR tiers, which always report all / >=0.5 / >=0.9 separately.",
+                    "fa_icon": "fas fa-filter"
+                },
                 "sailor_snakefile": {
                     "type": "string",
                     "format": "file-path",
