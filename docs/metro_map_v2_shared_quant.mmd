@@ -43,9 +43,15 @@
 %%metro file:  flare_out   | TSV   | Edit clusters
 %%metro file:  sc_out      | TSV   | Normalized edits
 
-%% ── Off-track stations (BAM-start entries + reference asset) ────────────────
+%% ── Off-track stations (BAM-start entries + reference assets) ───────────────
+%% gtf_in must be off-track alongside flare_regions. FLARE has two incoming
+%% bulk_flare edges — the real route (sailor_run -> flare_run) and the regions
+%% asset (gtf_in -> flare_regions -> flare_run). With gtf_in on-track, the second
+%% renders as a parallel purple branch that drops down and rejoins at FLARE.
+%% Marking it off-track makes it a feeder stub, like bam_bulk_in.
 %%metro off_track: bam_bulk_in
 %%metro off_track: bam_sc_in
+%%metro off_track: gtf_in
 %%metro off_track: flare_regions
 
 %% ── Section grid (col,row,rowspan,colspan) ─────────────────────────────────
@@ -57,6 +63,15 @@
 %%metro grid: marine_bulk_sec   | 3,2,1,2
 %%metro grid: sailor_sec        | 3,3
 %%metro grid: flare_sec         | 4,3
+
+%% NOTE on the SAILOR section and bulk_flare — do not "simplify" the edge
+%% labels there. nf-metro only lets a line detour around ONE station it does not
+%% consume; with both metaPlotR and Normalize Edits in the box, a bypassing
+%% bulk_flare strikes a marker and the Tier-A guard rejects the layout. Neither
+%% off_track (which changes drawing, not corridor position) nor
+%% line_spread: rails (which overflows the section and makes the exit backtrack)
+%% fixes it. The working answer is to route bulk_flare *through* those stations
+%% rather than around them — see the labels in sailor_sec below.
 
 %% ── Live-progress mapping (nf-metro serve -with-weblog) ─────────────────────
 %%metro process: fastqc         | .*:FASTQC$
@@ -137,6 +152,17 @@ graph LR
     end
 
     %% ══ SAILOR ranked edit sites + expression normalisation ══════════════
+    %% bulk_flare is labelled on the internal edges so it travels THROUGH these
+    %% stations rather than detouring around them — that is what keeps the
+    %% Tier-A marker-crossing guard satisfied (see the note above). It is also
+    %% honest: --run_flare requires --run_sailor, so an RBP-STAMP run really does
+    %% execute metaPlotR and Normalize Edits before FLARE. The purple line shows
+    %% the route taken, not FLARE's direct inputs.
+    %%
+    %% metaPlotR and Normalize Edits are PARALLEL consumers of the ranked BEDs in
+    %% code — both take ch_ranked_beds, neither feeds the other. They are drawn
+    %% in series to keep SAILOR a single readable track; on the MARINE line
+    %% opposite, normalize -> metaPlotR is a genuine dependency.
     subgraph sailor_sec [SAILOR]
         %%metro entry: left  | bulk_sailor, bulk_flare
         %%metro exit:  right | bulk_flare
@@ -144,8 +170,8 @@ graph LR
         metaplotr_s[metaPlotR]
         normalize_s[Normalize Edits]
         sailor_out[ ]
-        sailor_run  -->|bulk_sailor| metaplotr_s
-        metaplotr_s -->|bulk_sailor| normalize_s
+        sailor_run  -->|bulk_sailor,bulk_flare| metaplotr_s
+        metaplotr_s -->|bulk_sailor,bulk_flare| normalize_s
         normalize_s -->|bulk_sailor| sailor_out
     end
 
@@ -179,5 +205,7 @@ graph LR
     star_align   -->|bulk_marine,bulk_sailor,bulk_flare| infer_strand
     merge_counts -->|bulk_marine| marine_bulk
     merge_counts -->|bulk_sailor,bulk_flare| sailor_run
-    sailor_run   -->|bulk_flare| flare_run
+    %% Leaves from the last station bulk_flare visits, so the line exits the
+    %% right edge moving rightward into flare_sec with no backtrack.
+    normalize_s  -->|bulk_flare| flare_run
     multiqc_sc   -->|sc_marine| marine_sc
