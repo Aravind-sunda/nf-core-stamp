@@ -82,11 +82,24 @@ workflow BULK_SAILOR {
     ch_versions = ch_versions.mix(METAPLOTR_SAILOR.out.versions)
 
     // ── Annotate ranked sites to genes and normalise to expression ───────────
-    // SAILOR names its samples after the BAM file, so the id above still carries a
-    // '.bam' suffix. featureCounts columns use the clean sample name, so strip it
-    // here rather than renaming ch_ranked_beds (that would rename metaPlotR outputs).
+    // ch_ranked_beds carries SAILOR's own sample name (the BAM filename), which
+    // BULK_FLARE relies on to locate matching bigwigs — so it must stay as-is.
+    // featureCounts columns use the samplesheet id instead, and the two only
+    // coincide for FASTQ-start samples: SAILOR renames STAR BAMs to '{id}.bam',
+    // while BAM-start samples keep their own filename (sample 'exp' may arrive as
+    // 'exp_chr1.bam'). Recover the real meta by joining on that filename, applying
+    // the same rename rule as modules/local/sailor/main.nf.
+    def ch_bam_key = ch_all_bams.map { meta, bam, _bai ->
+        def sailor_name = bam.name.endsWith('.Aligned.sortedByCoord.out.bam')
+            ? bam.name.replace('.Aligned.sortedByCoord.out.bam', '.bam')
+            : bam.name
+        [ sailor_name, meta ]
+    }
+
     def ch_normalize_input = ch_ranked_beds
-        .map { meta, bed -> [ [id: meta.id.replaceAll(/\.bam$/, '')], bed ] }
+        .map { meta, bed -> [ meta.id, bed ] }
+        .join(ch_bam_key)
+        .map { _sailor_name, bed, meta -> [ meta, bed ] }
         .combine(counts_matrix)
 
     NORMALIZE_EDITS_SAILOR(ch_normalize_input, strandedness, gene_bed)
