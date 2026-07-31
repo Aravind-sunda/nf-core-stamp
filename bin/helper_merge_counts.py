@@ -23,7 +23,10 @@ import sys
 import pandas as pd
 
 
-ANNOTATION_COLS = ["Chr", "Start", "End", "Strand", "Length"]
+# Everything that is not a per-sample count column. gene_id is emitted by
+# featureCounts --extraAttributes; it must be listed here or load_featurecounts()
+# mistakes it for a second count column and aborts.
+ANNOTATION_COLS = ["Chr", "Start", "End", "Strand", "Length", "gene_id"]
 
 
 def parse_args():
@@ -80,13 +83,17 @@ def main():
         merged[name] = df[name]
         print(f"[LOG] Loaded {name}")
 
+    # errors="ignore" so matrices produced before --extraAttributes was added
+    # (no gene_id column) still work.
+    n_annotation = sum(c in merged.columns for c in ANNOTATION_COLS)
     if args.drop_annotation:
-        merged = merged.drop(columns=ANNOTATION_COLS)
+        merged = merged.drop(columns=ANNOTATION_COLS, errors="ignore")
+        n_annotation = 0
 
     os.makedirs(os.path.dirname(os.path.abspath(args.outfile)), exist_ok=True)
     merged.to_csv(args.outfile, sep="\t")
     print(f"[DONE] Count matrix written to {args.outfile}")
-    print(f"[DONE] Shape: {merged.shape[0]} genes x {merged.shape[1] - len(ANNOTATION_COLS) if not args.drop_annotation else merged.shape[1]} samples")
+    print(f"[DONE] Shape: {merged.shape[0]} genes x {merged.shape[1] - n_annotation} samples")
 
 
 if __name__ == "__main__":

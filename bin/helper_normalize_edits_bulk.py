@@ -78,7 +78,12 @@ def split_multi_annotated_sites(df):
 def process_feature_counts(feature_counts_path):
     """Read featureCounts matrix and return only Geneid + sample count columns."""
     feature_counts = pd.read_csv(feature_counts_path, sep="\t", comment="#")
-    feature_counts = feature_counts.drop(columns=["Chr", "Start", "End", "Strand", "Length"])
+    # gene_id comes from featureCounts --extraAttributes and is annotation, not a
+    # sample; leaving it in would make it look like a count column downstream.
+    # errors="ignore" keeps matrices built before that flag was added working.
+    feature_counts = feature_counts.drop(
+        columns=["Chr", "Start", "End", "Strand", "Length", "gene_id"], errors="ignore"
+    )
     return feature_counts
 
 

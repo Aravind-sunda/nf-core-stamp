@@ -119,7 +119,12 @@ def extract_gene_lengths_from_featurecounts(feature_counts_path):
 def process_feature_counts(feature_counts_path):
     """Read the featureCounts matrix and return Geneid + sample count columns."""
     feature_counts = pd.read_csv(feature_counts_path, sep="\t", comment="#")
-    return feature_counts.drop(columns=["Chr", "Start", "End", "Strand", "Length"])
+    # gene_id comes from featureCounts --extraAttributes and is annotation, not a
+    # sample; leaving it in would make it look like a count column downstream.
+    # errors="ignore" keeps matrices built before that flag was added working.
+    return feature_counts.drop(
+        columns=["Chr", "Start", "End", "Strand", "Length", "gene_id"], errors="ignore"
+    )
 
 
 def normalizing_sailor_edits(sites, feature_counts, sample_name):
