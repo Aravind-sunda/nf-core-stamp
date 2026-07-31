@@ -39,8 +39,6 @@ mamba activate nextflow
 
 set -euo pipefail
 
-cd "$(dirname "${BASH_SOURCE[0]}")"
-
 nf-metro validate metro_map.mmd
 
 # Static SVG, dark — non-animated fallback for dark-theme readers.
@@ -70,6 +68,7 @@ nf-metro render metro_map.mmd \
 # Animated SVG, dark — embedded in the README for dark-theme readers.
 # --embed-font inlines Inter so the SVG renders identically on GitHub, which
 # serves it without access to local fonts.
+
 nf-metro render metro_map.mmd \
     --theme nfcore \
     --diamond-style straight \
