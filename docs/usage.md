@@ -147,6 +147,27 @@ nextflow run nf-core/stamp \
 
 This will launch the pipeline with the `docker` configuration profile. See below for more information about profiles.
 
+> [!IMPORTANT]
+> **Set true/false parameters in a config file, not on the command line.** Passing
+> `--run_marine false` on the CLI makes Nextflow read it as the string `"false"`, and
+> parameter validation then rejects it:
+>
+> ```
+> * --run_marine (false): Value is [string] but should be [boolean]
+> ```
+>
+> Put them in a config passed with `-c` instead:
+>
+> ```groovy
+> params {
+>     run_marine = false
+>     run_sailor = true
+> }
+> ```
+>
+> This applies to every true/false parameter, including `run_marine`, `run_sailor`,
+> `run_flare` and the `filter_bulk_*` / `filter_sc_*` switches.
+
 Note that the pipeline will create the following files in your working directory:
 
 ```bash
