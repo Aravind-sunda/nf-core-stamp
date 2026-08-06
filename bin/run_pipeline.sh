@@ -31,4 +31,7 @@ nextflow run "$PIPELINE_DIR/main.nf" \
     -profile "singularity" \
     --outdir "${OUTPUT_DIR}/results" \
     --sailor_snakemake_path "$SNAKEMAKE_PATH" \
-    # -resume
+    -resume
+
+# it is worth having the resume error in the first run than to forget to uncomment the resume flag and have to re-run the entire pipeline. 
+# The resume flag is useful when you want to re-run the pipeline after making changes to the config file or if the pipeline was interrupted for some reason.
