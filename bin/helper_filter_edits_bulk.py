@@ -80,6 +80,18 @@ def annotate_edit_sites(df, annotation_bed):
     ]
     intersect = intersect[["name", "feature_name", "feature_type", "feature_strand"]]
 
+    # A site inside two overlapping loci that share a symbol matches both BED rows,
+    # so the merge below would duplicate it and downstream per-gene sums would count
+    # its reads twice. Keep one row per site-gene pair. Keyed on the name alone, not
+    # the whole row: those loci can differ in biotype (ELFN2 is lncRNA and
+    # protein_coding on chr22) and would otherwise stay distinct. feature_type is
+    # only ever tested for '-1', so dropping the second label changes no metric.
+    n_before = len(intersect)
+    intersect = intersect.drop_duplicates(subset=["name", "feature_name"])
+    if len(intersect) != n_before:
+        print(f"  Collapsed {n_before - len(intersect):,} duplicate site-gene pair(s) "
+              f"from overlapping loci sharing a symbol")
+
     df = df.copy()
     df["_site_key"] = df["contig"] + "_" + df["position"].astype(str)
     intersect = intersect.rename(columns={"name": "_site_key"})

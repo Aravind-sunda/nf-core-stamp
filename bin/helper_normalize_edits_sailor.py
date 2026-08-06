@@ -41,6 +41,32 @@ logger = logging.getLogger(__name__)
 BED_COLS = ["contig", "start", "position", "confidence", "reads", "strand"]
 
 
+def _join_unique(series):
+    """Collapse a group's values to a single cell, comma-joining genuine variation."""
+    uniq = series.unique()
+    return ",".join(str(v) for v in uniq) if len(uniq) > 1 else series.iloc[0]
+
+
+def _warn_multi_locus_genes(df):
+    """Log gene symbols whose sites span more than one contig.
+
+    A symbol can map to several distinct gene_ids — 21 do in GRCh38-2024-A, e.g.
+    LSP1P5 is ENSG00000288905 on chr1 and ENSG00000291150 on chr2. featureCounts
+    (-g gene_name) already merges those into one count, so this script has to
+    merge them too. The merge is correct given the counting scheme, but it does
+    conflate distinct genes, so name them rather than let it pass silently.
+    """
+    spans = df.groupby("feature_name")["contig"].nunique()
+    multi = spans[spans > 1]
+    if len(multi):
+        logger.warning(
+            f"{len(multi)} gene symbol(s) have sites on more than one contig and will be "
+            f"merged into a single row, matching how featureCounts counted them: "
+            f"{', '.join(multi.index.astype(str)[:10])}"
+            f"{' ...' if len(multi) > 10 else ''}"
+        )
+
+
 def read_ranked_bed(path):
     """Read a SAILOR combined ranked BED and split the 'edited,total' field."""
     df = pd.read_csv(path, sep="\t", header=None, names=BED_COLS,
@@ -96,6 +122,20 @@ def annotate_sites(df, annotation_bed, strand_aware):
     )
     intersect = intersect[["name", "feature_name", "feature_type", "feature_strand"]]
 
+    # A site inside two overlapping loci that share a symbol matches both BED rows,
+    # so the merge below would duplicate it and the per-gene sum would count its
+    # reads twice. Keep one row per site-gene pair. Keyed on the name alone, not
+    # the whole row: those loci can differ in biotype (ELFN2 is lncRNA and
+    # protein_coding on chr22) and would otherwise stay distinct. feature_type is
+    # only ever tested for '-1', so dropping the second label changes no metric.
+    n_before = len(intersect)
+    intersect = intersect.drop_duplicates(subset=["name", "feature_name"])
+    if len(intersect) != n_before:
+        logger.info(
+            f"  Collapsed {n_before - len(intersect):,} duplicate site-gene pair(s) "
+            f"from overlapping loci sharing a symbol"
+        )
+
     df = df.copy()
     df["_site_key"] = df["contig"] + "_" + df["position"].astype(str)
     intersect = intersect.rename(columns={"name": "_site_key"})
@@ -143,12 +183,20 @@ def normalizing_sailor_edits(sites, feature_counts, sample_name):
 
     feature_counts = feature_counts[["Geneid", sample_name]]
 
-    normalized_matrix = sites.groupby(["contig", "feature_name"]).agg(
+    _warn_multi_locus_genes(sites)
+
+    # Grouped by feature_name alone, deliberately NOT by (contig, feature_name) —
+    # same reasoning as helper_normalize_edits_bulk.py: featureCounts runs with
+    # -g gene_name and collapses every locus sharing a symbol into one count, so
+    # splitting the numerator per contig would divide one locus' edits by all
+    # loci's reads.
+    normalized_matrix = sites.groupby("feature_name").agg(
+        contig=("contig", _join_unique),
         total_edits=("count", "sum"),
         total_coverage=("coverage", "sum"),
         feature_type=("feature_type", "first"),
-        feature_strand=("feature_strand", "first"),
-        strand=("strand", lambda x: ",".join(x.unique()) if x.nunique() > 1 else x.iloc[0]),
+        feature_strand=("feature_strand", _join_unique),
+        strand=("strand", _join_unique),
         mean_confidence=("confidence", "mean"),
         n_sites=("count", "size"),
         Length=("Length", "first"),

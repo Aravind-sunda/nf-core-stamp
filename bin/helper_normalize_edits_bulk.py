@@ -36,6 +36,34 @@ def complement_edit(edit: str) -> str:
     return f"{comp[ref]}>{comp[alt]}"
 
 
+def _join_unique(series):
+    """Collapse a group's values to a single cell, comma-joining genuine variation."""
+    uniq = series.unique()
+    return ",".join(str(v) for v in uniq) if len(uniq) > 1 else series.iloc[0]
+
+
+def _warn_multi_locus_genes(df):
+    """Log gene symbols whose edits span more than one contig.
+
+    A symbol can map to several distinct gene_ids — 21 do in GRCh38-2024-A, e.g.
+    LSP1P5 is ENSG00000288905 on chr1 and ENSG00000291150 on chr2. featureCounts
+    (-g gene_name) already merges those into one count, so this script has to
+    merge them too; the alternative divides one locus' edits by every locus'
+    reads. The merge is therefore correct given the counting scheme, but it does
+    conflate distinct genes, so name them rather than let it pass silently.
+    Keying the whole pipeline on gene_id would be the way to remove the ambiguity.
+    """
+    spans = df.groupby("feature_name")["contig"].nunique()
+    multi = spans[spans > 1]
+    if len(multi):
+        logger.warning(
+            f"{len(multi)} gene symbol(s) have edits on more than one contig and will be "
+            f"merged into a single row, matching how featureCounts counted them: "
+            f"{', '.join(multi.index.astype(str)[:10])}"
+            f"{' ...' if len(multi) > 10 else ''}"
+        )
+
+
 def extract_gene_lengths_from_featurecounts(feature_counts_path):
     """Extract Geneid and Length columns from a featureCounts output file."""
     fc = pd.read_csv(feature_counts_path, sep="\t", comment="#")
@@ -57,10 +85,38 @@ def annotate_gene_length(df, gene_lengths_df):
     return annotated
 
 
+def _dedupe_annotation_lists(names, types, strands):
+    """Drop repeats of the same gene from one site's annotation lists.
+
+    A site inside two overlapping loci that share a symbol is annotated
+    'MKKS,MKKS,MKKS'. Exploding that as-is yields three rows for one site, and the
+    per-gene sum then counts its reads three times. Collapsing to the first entry
+    per name keeps one row per site-gene pair.
+
+    Deliberately keyed on the name alone, not the (name, type, strand) triple:
+    four ambiguous symbols have loci with different biotypes that overlap (e.g.
+    ELFN2 is lncRNA and protein_coding on chr22), so a triple would stay distinct
+    and the double count would survive. The discarded biotype costs nothing —
+    feature_type is only ever tested for '-1' (unannotated) and otherwise carried
+    through as a label; it never enters a metric.
+    """
+    seen = set()
+    kept = ([], [], [])
+    for name, ftype, strand in zip(names, types, strands):
+        if name in seen:
+            continue
+        seen.add(name)
+        for bucket, value in zip(kept, (name, ftype, strand)):
+            bucket.append(value)
+    return kept
+
+
 def split_multi_annotated_sites(df):
     """Explode rows where feature_name/feature_type/feature_strand hold comma-separated
     values (site overlapping multiple genes) into one row per annotation.
     All other columns (count, coverage, etc.) are duplicated across the new rows.
+    Repeats of the same gene within a site are collapsed first, so a site is only
+    ever counted once per gene.
     """
     multi = df["feature_name"].str.contains(",", na=False)
     n_multi = multi.sum()
@@ -68,9 +124,34 @@ def split_multi_annotated_sites(df):
         return df
     logger.info(f"Splitting {n_multi:,} multi-annotated rows into per-gene entries ...")
     df = df.copy()
-    for col in ["feature_name", "feature_type", "feature_strand"]:
+    cols = ["feature_name", "feature_type", "feature_strand"]
+    for col in cols:
         df[col] = df[col].str.split(",")
-    df = df.explode(["feature_name", "feature_type", "feature_strand"]).reset_index(drop=True)
+
+    # Ragged annotations would silently truncate under zip(), so refuse them.
+    lengths = pd.DataFrame({c: df[c].str.len() for c in cols})
+    ragged = (lengths.nunique(axis=1) > 1).sum()
+    if ragged:
+        raise ValueError(
+            f"{ragged:,} row(s) have differing counts of comma-separated values across "
+            f"{cols}. Cannot align annotations to genes."
+        )
+
+    n_before = df[cols[0]].str.len().sum()
+    deduped = [
+        _dedupe_annotation_lists(n, t, s)
+        for n, t, s in zip(df["feature_name"], df["feature_type"], df["feature_strand"])
+    ]
+    for i, col in enumerate(cols):
+        df[col] = [d[i] for d in deduped]
+    n_after = df[cols[0]].str.len().sum()
+    if n_after != n_before:
+        logger.info(
+            f"  Collapsed {n_before - n_after:,} repeated same-gene annotation(s) "
+            f"so each site counts once per gene"
+        )
+
+    df = df.explode(cols).reset_index(drop=True)
     logger.info(f"  Rows after split: {len(df):,}")
     return df
 
@@ -108,13 +189,22 @@ def normalizing_marine_edits(marine_counts, feature_counts, sample_name):
 
     feature_counts = feature_counts[["Geneid", sample_name]]
 
-    normalized_matrix = marine_counts.groupby(["contig", "feature_name"]).agg(
+    _warn_multi_locus_genes(marine_counts)
+
+    # Grouped by feature_name alone, deliberately NOT by (contig, feature_name).
+    # featureCounts runs with -g gene_name, so it collapses every locus sharing a
+    # symbol into ONE meta-feature — one count, one Length. Splitting the numerator
+    # per contig while the denominator stays merged divides one locus' edits by all
+    # loci's reads, which is wrong in every resulting row. Grouping by symbol keeps
+    # numerator and denominator on the same key.
+    normalized_matrix = marine_counts.groupby("feature_name").agg(
+        contig=("contig", _join_unique),
         total_edits=("count", "sum"),
         total_coverage=("coverage", "sum"),
         feature_type=("feature_type", "first"),
-        feature_strand=("feature_strand", "first"),
-        strand_conversion=("strand_conversion", lambda x: ",".join(x.unique()) if x.nunique() > 1 else x.iloc[0]),
-        strand=("strand", lambda x: ",".join(x.unique()) if x.nunique() > 1 else x.iloc[0]),
+        feature_strand=("feature_strand", _join_unique),
+        strand_conversion=("strand_conversion", _join_unique),
+        strand=("strand", _join_unique),
         Length=("Length", "first"),
     ).reset_index()
 
