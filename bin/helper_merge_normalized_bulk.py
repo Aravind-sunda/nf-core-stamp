@@ -55,6 +55,11 @@ def parse_args():
                         help="File suffix to glob for (default: .EPR_EPKM_normalized.tsv)")
     parser.add_argument("--fill", default=None,
                         help="Value for genes absent from a sample (default: leave empty/NaN)")
+    parser.add_argument("--extra-metrics", nargs="+", default=[], metavar="COL",
+                        dest="extra_metrics",
+                        help="Caller-specific columns to emit as wide matrices in addition to "
+                             f"the shared set ({', '.join(METRIC_COLS)}). "
+                             "e.g. SAILOR's n_sites and mean_confidence.")
     return parser.parse_args()
 
 
@@ -100,7 +105,8 @@ def main():
 
     os.makedirs(args.outdir, exist_ok=True)
 
-    for metric in METRIC_COLS:
+    # dict.fromkeys, not a set: preserves order and drops a metric named twice.
+    for metric in dict.fromkeys(METRIC_COLS + args.extra_metrics):
         if metric not in combined.columns:
             print(f"[WARN] Column '{metric}' absent from inputs — skipping")
             continue

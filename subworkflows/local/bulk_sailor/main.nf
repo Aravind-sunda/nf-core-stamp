@@ -15,6 +15,7 @@
 include { SAILOR                  } from '../../../modules/local/sailor/main'
 include { METAPLOTR_SAILOR        } from '../../../modules/local/metaplotr_sailor/main'
 include { NORMALIZE_EDITS_SAILOR  } from '../../../modules/local/normalize_edits_sailor/main'
+include { MERGE_NORMALIZED_SAILOR } from '../../../modules/local/merge_normalized_sailor/main'
 
 workflow BULK_SAILOR {
 
@@ -104,6 +105,11 @@ workflow BULK_SAILOR {
 
     NORMALIZE_EDITS_SAILOR(ch_normalize_input, strandedness, gene_bed)
     ch_versions = ch_versions.mix(NORMALIZE_EDITS_SAILOR.out.versions)
+
+    // ── Merge per-sample tables into gene x sample matrices ──────────────────
+    // .collect() waits for every sample, so this runs once at the end.
+    MERGE_NORMALIZED_SAILOR(NORMALIZE_EDITS_SAILOR.out.normalized.map { _m, f -> f }.collect())
+    ch_versions = ch_versions.mix(MERGE_NORMALIZED_SAILOR.out.versions)
 
     emit:
     ranked_beds = ch_ranked_beds               // [ meta, bed ] per sample
