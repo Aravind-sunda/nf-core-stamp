@@ -209,6 +209,19 @@ workflow STAMP {
                     }
             }
 
+            // SAILOR has no unstranded mode. Warn but keep going — the run still
+            // produces output, just an incomplete one. Covers both branches above.
+            ch_sailor_strand = ch_sailor_strand.map { strand ->
+                if (strand == 0) {
+                    log.warn(
+                        "SAILOR: strandedness 0 (unstranded) is not supported — continuing anyway. " +
+                        "Roughly half the reads are discarded and per-site coverage is halved. " +
+                        "Prefer MARINE (--run_marine true) for unstranded data."
+                    )
+                }
+                strand
+            }
+
             BULK_SAILOR(
                 BULK_PREPROCESS.out.bams,
                 ch_sailor_strand,
