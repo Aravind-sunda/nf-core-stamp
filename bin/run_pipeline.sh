@@ -10,6 +10,11 @@
 #SBATCH --mail-user=asundaravadivelu@houstonmethodist.org
 #SBATCH --output=slurm_%u_%x_%j.log
 
+# Uncomment the following lines to clean up previous runs before starting a new one
+# rm -rf work/
+# rm -rf results*
+# rm -rf .nextflow*
+
 # ── Environment ───────────────────────────────────────────────────────────────
 module load mamba
 conda init bash
