@@ -26,16 +26,18 @@ workflow BULK_FLARE {
 
     def ch_versions = channel.empty()
 
-    // Pair each sample's ranked BED with its bigwigs/BAM, resolved from the
-    // SAILOR output folder's 8_bw_and_bam/ subdirectory by sample ID.
+    // Pair each sample's ranked BED with its bigwigs/BAM from the SAILOR output
+    // folder's 8_bw_and_bam/ subdirectory. Those files are named after the BAM
+    // SAILOR was given, not the samplesheet id, so look them up by meta.sailor_id
+    // (set in BULK_SAILOR); meta.id is what FLARE labels and publishes under.
     def ch_flare_inputs = ch_ranked_beds
         .combine(ch_sailor_dir)
         .map { meta, bed, sdir ->
             def bw_dir = "${sdir}/8_bw_and_bam"
-            def fwd_bw = file("${bw_dir}/${meta.id}.fwd.sorted.bw")
-            def rev_bw = file("${bw_dir}/${meta.id}.rev.sorted.bw")
-            def bam    = file("${bw_dir}/${meta.id}_filtered_merged.sorted.bam")
-            def bai    = file("${bw_dir}/${meta.id}_filtered_merged.sorted.bam.bai")
+            def fwd_bw = file("${bw_dir}/${meta.sailor_id}.fwd.sorted.bw")
+            def rev_bw = file("${bw_dir}/${meta.sailor_id}.rev.sorted.bw")
+            def bam    = file("${bw_dir}/${meta.sailor_id}_filtered_merged.sorted.bam")
+            def bai    = file("${bw_dir}/${meta.sailor_id}_filtered_merged.sorted.bam.bai")
             [ meta, bed, fwd_bw, rev_bw, bam, bai ]
         }
 
