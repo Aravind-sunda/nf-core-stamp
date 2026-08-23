@@ -118,8 +118,10 @@ For further information or help, don't hesitate to get in touch on the [Slack `#
 ## Citations
 
 <!-- TODO nf-core: Add citation for pipeline after first release. Uncomment lines below and update Zenodo doi and badge at the top of this file. -->
-<!-- If you use nf-core/stamp for your analysis, please cite it using the following doi: [10.5281/zenodo.XXXXXX](https://doi.org/10.5281/zenodo.XXXXXX) -->
-
+If you use nf-core/stamp for your analysis, please cite it using the following doi: [10.5281/zenodo.XXXXXX](https://doi.org/10.5281/zenodo.XXXXXX)
+>
+> Sundaravadivelu A, Maniero L, Beltrame E, Brannan KW. nf-core/STAMP: a Nextflow pipeline for STAMP analysis. 2026. In preparation. 
+>
 If you use nf-core/stamp for your analysis, please also cite the tools it wraps — in particular STAMP, MARINE, SAILOR and FLARE:
 
 > Brannan KW, Chaim IA, Marina RJ, et al. Robust single-cell discovery of RNA targets of RNA-binding proteins and ribosomes. _Nat Methods._ 2021;18(5):507-519. doi: [10.1038/s41592-021-01128-0](https://doi.org/10.1038/s41592-021-01128-0).
