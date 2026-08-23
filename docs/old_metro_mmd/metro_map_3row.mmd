@@ -4,97 +4,65 @@
 %%metro logo_scale: 0.6
 %%metro legend: bl
 
-%% ── Two-row layout ──────────────────────────────────────────────────────────
-%% Changes vs docs/metro_map_3row.mmd (the previous published map, kept for
-%% reference; docs/metro_map_old.mmd is the one before that):
-%%   1. The grid folds from three rows to two. Row 1 is the bulk spine
-%%      (Pre-processing -> Quantification -> MARINE); row 2 holds the routes
-%%      that branch off it (single-cell MARINE, SAILOR, FLARE).
-%%   2. Single-cell MARINE moves from the top-right of row 1 down to row 2, so
-%%      sc_marine no longer runs across the top of the map. Pre-processing
-%%      spans both rows and feeds it from the lower part of its right edge.
-%%   3. Node IDs for the input termini changed — see the ANIMATION note below.
-%%      This is load-bearing, not cosmetic.
+%% ── DRAFT v2 — for review, not yet the published map ────────────────────────
+%% Changes vs docs/metro_map.mmd:
+%%   1. featureCounts + Merge Counts move OUT of the MARINE section onto the
+%%      shared bulk spine. In code they now live in BULK_PREPROCESS and feed both
+%%      edit callers, so all three bulk lines traverse them.
+%%   2. The old map drew `marine_bulk --> featurecounts`, implying featureCounts
+%%      depended on MARINE. It never did — it consumes the aligned BAMs plus the
+%%      strand code. The new layout matches the real DAG.
+%%   3. SAILOR gains a Normalize Edits station (NORMALIZE_EDITS_SAILOR), so both
+%%      callers end on comparable EPR/EPKM tables.
+%%   4. The strandedness section becomes "Quantification" since it now also holds
+%%      gene counting. This avoids reworking the grid: the section keeps its
+%%      2,2,2,1 cell and simply carries more stations.
 
 %% ── Metro lines (analysis routes) ──────────────────────────────────────────
 %% Naming: "<Mode> <Assay>" then the edit caller where one distinguishes routes.
 %% The mode lives here, so section titles omit it.
 %%
 %% ORDER MATTERS: with --line-order definition (the default), lines are assigned
-%% tracks in the order declared here, top track first. It also sets the legend
-%% order.
-%%
-%% The bulk lines are declared in the order they leave the spine: bulk_marine
-%% carries straight on along row 1 and so takes the top track, while bulk_sailor
-%% and bulk_flare fold down into row 2 after Quantification. sc_marine is
-%% declared LAST so it takes the bottom track through Pre-processing and leaves
-%% from the low end of that box's right edge, dropping into row 2 without
-%% crossing the three bulk lines. (In the 3-row map it was declared FIRST for
-%% the mirror-image reason: it left via the top-right.) Reordering these
-%% reintroduces crossings.
+%% tracks in the order declared here. sc_marine is declared first so it takes the
+%% top track and runs straight into its own section on grid row 1, instead of
+%% crossing over the bulk bundle on its way up. Reordering these will reintroduce
+%% that crossing. It also sets the legend order.
+%%metro line: sc_marine   | Single-cell riboSTAMP   | #0570b0
 %%metro line: bulk_marine | Bulk riboSTAMP · MARINE | #2db572
 %%metro line: bulk_sailor | Bulk riboSTAMP · SAILOR | #e6842a
 %%metro line: bulk_flare  | Bulk RBP-STAMP          | #984ea3
-%%metro line: sc_marine   | Single-cell riboSTAMP   | #0570b0
 
 %% ── Input / output termini ─────────────────────────────────────────────────
-%% ANIMATION — the IDs below are chosen so that, for every line, the FASTQ
-%% terminus sorts alphabetically BEFORE the BAM terminus. nf-metro picks each
-%% line's animated start with `sorted(roots)[0]` (render/animate.py,
-%% _find_edge_disjoint_paths) and only generates alternative paths at forks —
-%% nodes with several *outgoing* edges — never at alternative roots. With the
-%% old IDs (`bam_bulk_in`, `fastq_in`) the BAM sorted first, so every ball
-%% started at the BAM entry and no ball ever traversed FastQC/fastp/STAR at all.
-%%
-%% `fastq_*` < `gtf_in` < `resume_bam_*` keeps the balls starting at the FASTQ
-%% inputs and running the full route. If you rename these, preserve that
-%% ordering, or the animation silently regresses — the static SVG looks correct
-%% either way, so this will not be caught by eye on a still render.
-%%metro files: fastq_bulk_in   | FASTQ | Bulk FASTQ
-%%metro files: fastq_sc_in     | FASTQ | Single-cell FASTQ
-%%metro file:  resume_bam_bulk | BAM   | Bulk BAM
-%%metro file:  resume_bam_sc   | BAM   | Single-cell BAM
-%%metro file:  gtf_in          | GTF   | Annotation
-%%metro file:  marine_out      | TSV   | Normalized edits
-%%metro file:  sailor_out      | TSV   | Normalized edits
-%%metro file:  flare_out       | TSV   | Edit clusters
-%%metro file:  sc_out          | TSV   | Normalized edits
+%%metro files: fastq_in    | FASTQ | Bulk FASTQ
+%%metro files: fastq_sc    | FASTQ | Single-cell FASTQ
+%%metro file:  bam_bulk_in | BAM   | Bulk BAM
+%%metro file:  bam_sc_in   | BAM   | Single-cell BAM
+%%metro file:  gtf_in      | GTF   | Annotation
+%%metro file:  marine_out  | TSV   | Normalized edits
+%%metro file:  sailor_out  | TSV   | Normalized edits
+%%metro file:  flare_out   | TSV   | Edit clusters
+%%metro file:  sc_out      | TSV   | Normalized edits
 
 %% ── Off-track stations (BAM-start entries + reference assets) ───────────────
 %% gtf_in must be off-track alongside flare_regions. FLARE has two incoming
 %% bulk_flare edges — the real route (sailor_run -> flare_run) and the regions
 %% asset (gtf_in -> flare_regions -> flare_run). With gtf_in on-track, the second
 %% renders as a parallel purple branch that drops down and rejoins at FLARE.
-%% Marking it off-track makes it a feeder stub, like the BAM entries.
-%%metro off_track: resume_bam_bulk
-%%metro off_track: resume_bam_sc
+%% Marking it off-track makes it a feeder stub, like bam_bulk_in.
+%%metro off_track: bam_bulk_in
+%%metro off_track: bam_sc_in
 %%metro off_track: gtf_in
 %%metro off_track: flare_regions
 
 %% ── Section grid (col,row,rowspan,colspan) ─────────────────────────────────
-%% Row 1: the bulk spine — Pre-processing, Quantification, MARINE.
-%% Row 2: the routes that branch off it — MARINE (single-cell), SAILOR, FLARE.
-%%
-%% Pre-processing spans BOTH rows (rowspan 2). That is what makes the two-row
-%% layout renderable: it lets one right-edge exit serve row 1 (the bulk lines,
-%% high) and row 2 (sc_marine, low) without either fold leaving the box through
-%% a horizontal edge.
-%%
-%% PORTS MUST BE LEFT/RIGHT HERE. Every section below is internally LR, and
-%% nf-metro requires an LR section to own at least one flow-aligned (left or
-%% right) port to anchor its stations to its bbox. Giving marine_sc_sec or
-%% sailor_sec a `top` entry instead — the obvious way to draw a drop from row 1
-%% — fails two ways: the section's stations spill outside its own bbox, and the
-%% bulk_sailor/bulk_flare bundle flips order at the down->right corner inside
-%% SAILOR, which the Tier-A curve invariants reject. Both row-2 sections are
-%% therefore entered from the LEFT and the row 1 -> row 2 fold happens in the
-%% gutter between columns, where nf-metro routes it.
-%%metro grid: preprocessing     | 1,1,2,1
-%%metro grid: quantification    | 2,1
-%%metro grid: marine_bulk_sec   | 3,1
-%%metro grid: marine_sc_sec     | 2,2
-%%metro grid: sailor_sec        | 3,2
-%%metro grid: flare_sec         | 4,2
+%% Unchanged from v1 — moving featureCounts into the existing quantification
+%% section avoids shifting any columns.
+%%metro grid: preprocessing     | 1,1,3,1
+%%metro grid: marine_sc_sec     | 2,1
+%%metro grid: quantification    | 2,2,2,1
+%%metro grid: marine_bulk_sec   | 3,2,1,2
+%%metro grid: sailor_sec        | 3,3
+%%metro grid: flare_sec         | 4,3
 
 %% NOTE on the SAILOR section and bulk_flare — do not "simplify" the edge
 %% labels there. nf-metro only lets a line detour around ONE station it does not
@@ -134,49 +102,44 @@
 
 graph LR
     %% ══ Pre-processing: QC, trimming & alignment ══════════════════════════
-    %% Bulk stations are declared first so the bulk branch takes the upper
-    %% tracks; the single-cell branch is declared last so it sits lowest. Both
-    %% leave by the right edge — the bulk lines into Quantification on row 1,
-    %% sc_marine into MARINE (single-cell) on row 2.
     subgraph preprocessing [Pre-processing]
-        %%metro entry: left   | bulk_marine, bulk_sailor, bulk_flare, sc_marine
-        %%metro exit:  right  | bulk_marine, bulk_sailor, bulk_flare, sc_marine
-        fastq_bulk_in[ ]
+        %%metro entry: left  | bulk_marine, bulk_sailor, bulk_flare, sc_marine
+        %%metro exit:  right | bulk_marine, bulk_sailor, bulk_flare, sc_marine
+        fastq_sc[ ]
+        cellranger[Cell Ranger]
+        multiqc_sc[MultiQC]
+        fastq_in[ ]
         fastqc[FastQC]
         fastp[fastp]
         star_align[STAR]
-        fastq_sc_in[ ]
-        cellranger[Cell Ranger]
-        multiqc_sc[MultiQC]
-        fastq_bulk_in -->|bulk_marine,bulk_sailor,bulk_flare| fastqc
-        fastqc        -->|bulk_marine,bulk_sailor,bulk_flare| fastp
-        fastp         -->|bulk_marine,bulk_sailor,bulk_flare| star_align
-        fastq_sc_in   -->|sc_marine| cellranger
-        cellranger    -->|sc_marine| multiqc_sc
+        fastq_in   -->|bulk_marine,bulk_sailor,bulk_flare| fastqc
+        fastqc     -->|bulk_marine,bulk_sailor,bulk_flare| fastp
+        fastp      -->|bulk_marine,bulk_sailor,bulk_flare| star_align
+        fastq_sc   -->|sc_marine| cellranger
+        cellranger -->|sc_marine| multiqc_sc
     end
 
     %% ══ Strandedness + gene quantification (shared by all bulk routes) ════
     %% featureCounts needs the inferred strand code, so it sits directly after
     %% RSeQC. Both edit callers normalise against this one counts matrix.
-    %% bulk_marine carries on rightward along row 1; bulk_sailor and bulk_flare
-    %% leave by the same edge and fold down into SAILOR on row 2.
     subgraph quantification [Strandedness & quantification]
-        %%metro entry: left   | bulk_marine, bulk_sailor, bulk_flare
-        %%metro exit:  right  | bulk_marine, bulk_sailor, bulk_flare
-        resume_bam_bulk[ ]
+        %%metro entry: left  | bulk_marine, bulk_sailor, bulk_flare
+        %%metro exit:  right | bulk_marine, bulk_sailor, bulk_flare
+        bam_bulk_in[ ]
         infer_strand[RSeQC]
         featurecounts[featureCounts]
         multiqc_bulk[MultiQC]
         merge_counts[Merge Counts]
-        resume_bam_bulk -->|bulk_marine,bulk_sailor,bulk_flare| infer_strand
-        infer_strand    -->|bulk_marine,bulk_sailor,bulk_flare| featurecounts
-        featurecounts   -->|bulk_marine,bulk_sailor,bulk_flare| multiqc_bulk
-        multiqc_bulk    -->|bulk_marine,bulk_sailor,bulk_flare| merge_counts
+        bam_bulk_in   -->|bulk_marine,bulk_sailor,bulk_flare| infer_strand
+        infer_strand  -->|bulk_marine,bulk_sailor,bulk_flare| featurecounts
+        featurecounts -->|bulk_marine,bulk_sailor,bulk_flare| multiqc_bulk
+        multiqc_bulk  -->|bulk_marine,bulk_sailor,bulk_flare| merge_counts
     end
 
     %% ══ MARINE bulk edit-calling + expression normalisation ══════════════
     subgraph marine_bulk_sec [MARINE]
-        %%metro entry: left | bulk_marine
+        %%metro entry: left  | bulk_marine
+        %%metro exit:  right | bulk_marine
         marine_bulk[MARINE]
         filter_edits_b[Filter Edits]
         normalize_b[Normalize Edits]
@@ -186,20 +149,6 @@ graph LR
         filter_edits_b -->|bulk_marine| normalize_b
         normalize_b    -->|bulk_marine| metaplotr_b
         metaplotr_b    -->|bulk_marine| marine_out
-    end
-
-    %% ══ Single-cell MARINE ═══════════════════════════════════════════════
-    subgraph marine_sc_sec [MARINE]
-        %%metro entry: left | sc_marine
-        resume_bam_sc[ ]
-        marine_sc[MARINE]
-        filter_sc[Filter Edits]
-        normalize_sc[Normalize Edits]
-        sc_out[ ]
-        resume_bam_sc -->|sc_marine| marine_sc
-        marine_sc     -->|sc_marine| filter_sc
-        filter_sc     -->|sc_marine| normalize_sc
-        normalize_sc  -->|sc_marine| sc_out
     end
 
     %% ══ SAILOR ranked edit sites + expression normalisation ══════════════
@@ -236,6 +185,20 @@ graph LR
         gtf_in        -->|bulk_flare| flare_regions
         flare_regions -->|bulk_flare| flare_run
         flare_run     -->|bulk_flare| flare_out
+    end
+
+    %% ══ Single-cell MARINE ═══════════════════════════════════════════════
+    subgraph marine_sc_sec [MARINE]
+        %%metro entry: left | sc_marine
+        bam_sc_in[ ]
+        marine_sc[MARINE]
+        filter_sc[Filter Edits]
+        normalize_sc[Normalize Edits]
+        sc_out[ ]
+        bam_sc_in    -->|sc_marine| marine_sc
+        marine_sc    -->|sc_marine| filter_sc
+        filter_sc    -->|sc_marine| normalize_sc
+        normalize_sc -->|sc_marine| sc_out
     end
 
     %% ── Inter-section edges ───────────────────────────────────────────────
