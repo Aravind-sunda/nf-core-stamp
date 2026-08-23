@@ -65,7 +65,8 @@ process MARINE_SC {
         --strandedness            2 \\
         --cores                   ${task.cpus} \\
         --min_read_quality        ${params.min_read_quality} \\
-        --min_base_quality        ${params.min_base_quality}
+        --min_base_quality        ${params.min_base_quality} \\
+        --min_dist_from_end       ${params.min_dist_from_end}
 
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":
