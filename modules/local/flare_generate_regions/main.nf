@@ -5,11 +5,13 @@
 //
 // Runs generate_regions.py directly (not via Snakemake), so it uses a real
 // container (the editc image, which ships the pandas/pybedtools stack the script
-// needs) — set in conf/modules.config, overridable with --editc_sif offline.
+// needs). Override with --editc_sif to point at a local SIF on offline HPC.
 process FLARE_GENERATE_REGIONS {
     tag "flare_regions"
     label 'process_medium'
     publishDir "${params.outdir}/05_flare", mode: params.publish_dir_mode
+
+    container { params.editc_sif as String ?: 'docker.io/ekofman/editc:v2' }
 
     input:
     path gtf

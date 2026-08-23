@@ -10,7 +10,17 @@
 process FLARE {
     tag "$meta.id"
     label 'process_sailor'
-    publishDir "${params.outdir}/05_flare", mode: params.publish_dir_mode
+    // FLARE names its own output folder after the sample (--output_folder below), so
+    // publishing into a further ${meta.id} directory would give 05_flare/<sample>/<sample>/.
+    // Publish into 05_flare and let FLARE's folder supply the sample level — the same
+    // arrangement as MARINE_BULK. Previously this folder was the constant 'flare_output',
+    // so every sample published to one path and the last to finish replaced the rest.
+    // saveAs drops versions.yml, which would otherwise collide across samples at
+    // 05_flare/; it is still emitted below and aggregated into pipeline_info/.
+    // Must be saveAs rather than `pattern`: pattern is evaluated eagerly, where meta
+    // is not in scope, so referencing it there fails with "No such variable: meta".
+    publishDir { "${params.outdir}/05_flare" }, mode: params.publish_dir_mode,
+        saveAs: { filename -> filename.equals('versions.yml') ? null : filename }
 
     // Snakemake is installed via conda when using -profile conda; ignored under
     // -profile singularity (conda.enabled=false globally), where it must be on PATH.
@@ -24,11 +34,12 @@ process FLARE {
     path snakefile   // FLARE Snakefile
 
     output:
-    tuple val(meta), path("flare_output/FLARE/${meta.id}_merged_sorted_peaks.*.scored.tsv"), emit: scored_peaks
-    path "flare_output/",                                                                     emit: output_dir
-    path "versions.yml",                                                                      emit: versions
+    tuple val(meta), path("${meta.id}/FLARE/${meta.id}_merged_sorted_peaks.*.scored.tsv"), emit: scored_peaks
+    path "${meta.id}/",                                                                    emit: output_dir
+    path "versions.yml",                                                                   emit: versions
 
     script:
+    def prefix     = meta.id
     // FLARE expects the 2-char edit code (C>T → CT, A>G → AG), same as SAILOR.
     def edit_flare = params.edit_type.replace(">", "").replaceAll(/\s/, "")
     def sing_cache = params.sailor_singularity_cache ?: ''
@@ -42,7 +53,7 @@ process FLARE {
         exit 1
     }
 
-    mkdir -p flare_output
+    mkdir -p ${prefix}
 
     # Build the per-sample FLARE (cluster-identification) JSON config. Reference the
     # staged workdir copies (via \$(pwd)) rather than realpath so index sidecars stay
@@ -52,9 +63,9 @@ process FLARE {
     # symlinks resolve either way. The regions folder needs no sidecar, so realpath is
     # fine there.
     helper_make_flare_json.py \\
-        --label ${meta.id} \\
+        --label ${prefix} \\
         --output_json ./flare_config.json \\
-        --output_folder \$(pwd)/flare_output \\
+        --output_folder \$(pwd)/${prefix} \\
         --stamp_sites_file \$(pwd)/${stamp_bed} \\
         --forward_bw \$(pwd)/${fwd_bw} \\
         --reverse_bw \$(pwd)/${rev_bw} \\

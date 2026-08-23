@@ -7,7 +7,7 @@ process METAPLOTR_BULK {
     publishDir { "${params.outdir}/07_metaplotr/${meta.id}" }, mode: params.publish_dir_mode
 
     conda 'conda-forge::python=3.8 conda-forge::pandas=2.0'
-    container "docker.io/aravindsundaravadivelu/ribostamp_utils:1.0.0"
+    container { params.ribostamp_utils_sif as String ?: 'docker.io/aravindsundaravadivelu/ribostamp_utils:1.0.0' }
 
     input:
     tuple val(meta), path(bedgraph_dir)

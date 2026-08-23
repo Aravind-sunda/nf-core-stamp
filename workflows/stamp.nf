@@ -4,11 +4,13 @@
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 */
 
+include { BULK_PREPROCESS        } from '../subworkflows/local/bulk_preprocess/main'
 include { BULK_MARINE            } from '../subworkflows/local/bulk_marine/main'
 include { BULK_SAILOR            } from '../subworkflows/local/bulk_sailor/main'
 include { BULK_FLARE             } from '../subworkflows/local/bulk_flare/main'
 include { SC_MARINE              } from '../subworkflows/local/sc_marine/main'
 include { FLARE_GENERATE_REGIONS } from '../modules/local/flare_generate_regions/main'
+include { PREPARE_DBSNP          } from '../modules/local/prepare_dbsnp/main'
 include { SAMTOOLS_FAIDX         } from '../modules/local/samtools_faidx/main'
 include { GUNZIP as GUNZIP_GTF      } from '../modules/local/gunzip/main'
 include { GUNZIP as GUNZIP_GENE_BED } from '../modules/local/gunzip/main'
@@ -88,8 +90,8 @@ workflow STAMP {
 
     // GTF and BED: decompress on-the-fly if .gz so that tools that don't
     // support gzipped inputs (RSeQC infer_experiment.py, MARINE, etc.) receive
-    // a plain file. .first() converts the single-element process output queue
-    // channel back into a value channel for broadcasting to all consumers.
+    // a plain file. The input is a value channel, so the output is one too and
+    // broadcasts to all consumers as-is — adding .first() here only warns.
     def ch_gtf = channel.empty()
     if (params.gtf) {
         if (params.gtf.endsWith('.gz')) {
@@ -112,9 +114,15 @@ workflow STAMP {
         }
     }
 
-    def ch_dbsnp_bed = params.dbsnp_bed
-        ? channel.value(file(params.dbsnp_bed, checkIfExists: true))
-        : channel.empty()
+    // Sorted once here rather than per sample: every consumer (bulk/sc filters and
+    // SAILOR) shares the same prepared file. The input is a value channel, so the
+    // output is one too and already broadcasts to every consumer — no .first().
+    def ch_dbsnp_bed = channel.empty()
+    if (params.dbsnp_bed) {
+        PREPARE_DBSNP(channel.value(file(params.dbsnp_bed, checkIfExists: true)))
+        ch_dbsnp_bed = PREPARE_DBSNP.out.bed
+        ch_versions  = ch_versions.mix(PREPARE_DBSNP.out.versions)
+    }
 
     def ch_snakefile = params.sailor_snakefile
         ? channel.value(file(params.sailor_snakefile, checkIfExists: true))
@@ -150,55 +158,42 @@ workflow STAMP {
             log.warn("Both --run_marine and --run_sailor are false in bulk mode. Nothing to run.")
         }
 
-        // ── MARINE: FASTQ/BAM → edits → expression → filter → normalize → metaPlotR
+        // ── Shared preprocessing: QC → trim → align → strandedness → featureCounts
+        // Runs once regardless of which edit callers are enabled, so MARINE and
+        // SAILOR can be selected independently and both normalise against the same
+        // expression matrix. FASTQ-start therefore works for SAILOR-only runs too.
+        BULK_PREPROCESS(
+            ch_by_mode.bulk,
+            ch_star_index,
+            ch_gtf,
+            ch_gene_bed
+        )
+        ch_versions      = ch_versions.mix(BULK_PREPROCESS.out.versions)
+        ch_multiqc_files = ch_multiqc_files.mix(BULK_PREPROCESS.out.multiqc)
+
+        // ── MARINE: edits → filter → normalize → metaPlotR
         if (params.run_marine) {
             BULK_MARINE(
-                ch_by_mode.bulk,
-                ch_star_index,
-                ch_gtf,
+                BULK_PREPROCESS.out.bams_with_strand,
+                BULK_PREPROCESS.out.counts_matrix,
                 ch_gene_bed,
                 ch_dbsnp_bed,
                 ch_genepred,
                 ch_fasta
             )
-            ch_versions      = ch_versions.mix(BULK_MARINE.out.versions)
-            ch_multiqc_files = ch_multiqc_files.mix(BULK_MARINE.out.multiqc)
+            ch_versions = ch_versions.mix(BULK_MARINE.out.versions)
         }
 
         // ── SAILOR: all BAMs → Snakemake → ranked BEDs → metaPlotR (3 tiers)
         if (params.run_sailor) {
 
-            // Which BAMs to feed SAILOR depends on whether MARINE ran first
-            def ch_sailor_bams
-            if (params.run_marine) {
-                // BULK_MARINE already aligned / validated all BAMs
-                ch_sailor_bams = BULK_MARINE.out.bams
-            } else {
-                // SAILOR-only: samples must be BAM-start; FASTQ-start requires MARINE first
-                ch_by_mode.bulk
-                    .filter { meta, _d -> meta.start == 'fastq' }
-                    .map { meta, _d ->
-                        error("Sample '${meta.id}' is FASTQ-start but --run_marine is false. " +
-                              "Cannot run SAILOR without alignment. Enable --run_marine or provide pre-aligned BAMs.")
-                    }
-                ch_sailor_bams = ch_by_mode.bulk
-                    .filter { meta, _d -> meta.start == 'bam' }
-                    .map { meta, bam ->
-                        def bai = file("${bam}.bai")
-                        if (!bai.exists()) bai = file("${bam.toString().replace('.bam', '.bai')}")
-                        if (!bai.exists()) {
-                            error("Sample '${meta.id}': BAI index not found. " +
-                                  "Expected '${bam}.bai' or '${bam.toString().replace('.bam', '.bai')}'.")
-                        }
-                        [ meta, bam, bai ]
-                    }
-            }
-
-            // Resolve strandedness: inferred by MARINE or provided by --strandedness
+            // Strandedness is inferred per sample upstream; SAILOR needs one value for
+            // the whole batch, so take the consensus. --strandedness overrides it.
             def ch_sailor_strand
-            if (params.run_marine) {
-                // Derive consensus from per-sample inferred strand codes
-                ch_sailor_strand = BULK_MARINE.out.strand_codes
+            if (params.strandedness != null) {
+                ch_sailor_strand = channel.value(params.strandedness.toInteger())
+            } else {
+                ch_sailor_strand = BULK_PREPROCESS.out.strand_codes
                     .map { _id, strand -> strand }
                     .collect()
                     .map { strands ->
@@ -212,20 +207,30 @@ workflow STAMP {
                             unique_strands[0]
                         }
                     }
-            } else {
-                if (params.strandedness == null) {
-                    error("--run_sailor without --run_marine requires --strandedness (0, 1, or 2).")
+            }
+
+            // SAILOR has no unstranded mode. Warn but keep going — the run still
+            // produces output, just an incomplete one. Covers both branches above.
+            ch_sailor_strand = ch_sailor_strand.map { strand ->
+                if (strand == 0) {
+                    log.warn(
+                        "SAILOR: strandedness 0 (unstranded) is not supported — continuing anyway. " +
+                        "Roughly half the reads are discarded and per-site coverage is halved. " +
+                        "Prefer MARINE (--run_marine true) for unstranded data."
+                    )
                 }
-                ch_sailor_strand = channel.value(params.strandedness.toInteger())
+                strand
             }
 
             BULK_SAILOR(
-                ch_sailor_bams,
+                BULK_PREPROCESS.out.bams,
                 ch_sailor_strand,
+                BULK_PREPROCESS.out.counts_matrix,
                 ch_fasta,
                 ch_fasta_fai,
                 ch_dbsnp_bed,
                 ch_snakefile,
+                ch_gene_bed,
                 ch_genepred
             )
             ch_versions = ch_versions.mix(BULK_SAILOR.out.versions)
@@ -245,8 +250,9 @@ workflow STAMP {
                     )
                     FLARE_GENERATE_REGIONS(ch_gtf, params.flare_window_size, ch_flare_scripts)
                     ch_versions = ch_versions.mix(FLARE_GENERATE_REGIONS.out.versions)
-                    // .first() → value channel so the regions folder broadcasts to every sample
-                    ch_flare_regions = FLARE_GENERATE_REGIONS.out.regions.first()
+                    // All inputs are value channels, so regions is one too and already
+                    // broadcasts to every sample — adding .first() here only warns.
+                    ch_flare_regions = FLARE_GENERATE_REGIONS.out.regions
                 }
 
                 BULK_FLARE(

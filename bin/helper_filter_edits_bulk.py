@@ -80,6 +80,18 @@ def annotate_edit_sites(df, annotation_bed):
     ]
     intersect = intersect[["name", "feature_name", "feature_type", "feature_strand"]]
 
+    # A site inside two overlapping loci that share a symbol matches both BED rows,
+    # so the merge below would duplicate it and downstream per-gene sums would count
+    # its reads twice. Keep one row per site-gene pair. Keyed on the name alone, not
+    # the whole row: those loci can differ in biotype (ELFN2 is lncRNA and
+    # protein_coding on chr22) and would otherwise stay distinct. feature_type is
+    # only ever tested for '-1', so dropping the second label changes no metric.
+    n_before = len(intersect)
+    intersect = intersect.drop_duplicates(subset=["name", "feature_name"])
+    if len(intersect) != n_before:
+        print(f"  Collapsed {n_before - len(intersect):,} duplicate site-gene pair(s) "
+              f"from overlapping loci sharing a symbol")
+
     df = df.copy()
     df["_site_key"] = df["contig"] + "_" + df["position"].astype(str)
     intersect = intersect.rename(columns={"name": "_site_key"})
@@ -106,13 +118,27 @@ def filter_dbsnp(df, dbsnp_bed_path):
     sites["end"]   = sites["position"]
     sites["name"]  = sites["contig"] + "_" + sites["position"].astype(str)
 
+    # bedtools `-sorted` streams both files in lockstep instead of building an
+    # in-memory interval tree of the whole dbSNP (>100 GB for hg38). It requires
+    # both sides in the same order, and PREPARE_DBSNP sorts the dbSNP with
+    # `sort -k1,1 -k2,2n` — lexicographic contig, numeric start — so match that here.
+    sites = sites.sort_values(["contig", "start"], kind="mergesort")
+
     edits_bt = pybedtools.BedTool.from_dataframe(sites[["contig", "start", "end", "name"]])
     dbsnp_bt = pybedtools.BedTool(dbsnp_bed_path)
 
-    non_overlapping = edits_bt.intersect(dbsnp_bt, v=True)
+    non_overlapping = edits_bt.intersect(dbsnp_bt, v=True, sorted=True)
     if non_overlapping.count() == 0:
-        print("  Warning: all sites overlap dbSNP — returning empty DataFrame.")
-        return df.iloc[0:0].copy()
+        # Never a legitimate result on real data: every candidate edit being a known
+        # SNP means the intersect failed (historically an OOM kill), and silently
+        # returning empty propagates as a zero-byte BED that only fails several
+        # steps later in metaPlotR with an unrelated-looking error.
+        raise RuntimeError(
+            f"dbSNP filter removed all {len(sites):,} candidate sites, which is not a "
+            f"plausible result. The bedtools intersect against {dbsnp_bed_path} most "
+            f"likely failed (out of memory, or a truncated/malformed dbSNP BED) rather "
+            f"than genuinely matching every site. Refusing to emit an empty edit set."
+        )
     keep_keys = set(non_overlapping.to_dataframe()["name"])
 
     site_key = df["contig"] + "_" + df["position"].astype(str)

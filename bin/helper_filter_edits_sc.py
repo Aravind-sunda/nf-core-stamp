@@ -10,7 +10,9 @@ Required inputs
 Optional inputs
 ---------------
 --min-count        Minimum total edited reads per site across all cells (default: 3)
---max-frac         Max editing fraction for the primary fraction filter (default: 0.10)
+--max-frac         Max per-cell editing fraction at a site (default: 0.10)
+--site-max-frac    Max per-site editing fraction across all cells, Filter 6
+                   (default: 0.05; only applied with --filter-site-max-frac)
 --output-dir / -o  If given, all TSV outputs and images are written to this directory
 
 Example
@@ -37,10 +39,30 @@ import pybedtools
 # Filter functions
 # ---------------------------------------------------------------------------
 
+# Previous implementation -- grouped by barcode as well, so a mixed site only
+# lost the rows of the cells that showed the mixture and survived through the
+# rest of the population. Sequencing-error hotspots in deeply covered genes are
+# exactly that.
+#
+# def filter_multi_conversion(df):
+#     """Remove rows where a barcode has >1 strand_conversion at the same site."""
+#     mask = (
+#         df.groupby(["barcode", "contig", "position"])["strand_conversion"]
+#         .transform("nunique") == 1
+#     )
+#     return df[mask].copy()
+
+
 def filter_multi_conversion(df):
-    """Remove rows where a barcode has >1 strand_conversion at the same site."""
+    """Drop sites showing more than one strand_conversion across all cells.
+
+    Per site, not per (cell, site): Methods say "Edit sites (sites with more than
+    one edit type) [...] were filtered out". A position with several conversion
+    types across the population is a sequencing-error hotspot rather than an edit
+    site.
+    """
     mask = (
-        df.groupby(["barcode", "contig", "position"])["strand_conversion"]
+        df.groupby(["contig", "position"])["strand_conversion"]
         .transform("nunique") == 1
     )
     return df[mask].copy()
@@ -53,10 +75,27 @@ def filter_dbsnp(df, dbsnp_bed_path):
     sites["end"]   = sites["position"]
     sites["name"]  = sites["contig"] + "_" + sites["position"].astype(str)
 
+    # bedtools `-sorted` streams both files in lockstep instead of building an
+    # in-memory interval tree of the whole dbSNP (>100 GB for hg38). It requires
+    # both sides in the same order, and PREPARE_DBSNP sorts the dbSNP with
+    # `sort -k1,1 -k2,2n` — lexicographic contig, numeric start — so match that here.
+    sites = sites.sort_values(["contig", "start"], kind="mergesort")
+
     edits_bt = pybedtools.BedTool.from_dataframe(sites[["contig", "start", "end", "name"]])
     dbsnp_bt = pybedtools.BedTool(dbsnp_bed_path)
 
-    non_overlapping = edits_bt.intersect(dbsnp_bt, v=True)
+    non_overlapping = edits_bt.intersect(dbsnp_bt, v=True, sorted=True)
+    if non_overlapping.count() == 0:
+        # Never a legitimate result on real data: every candidate edit being a known
+        # SNP means the intersect failed (historically an OOM kill) rather than
+        # genuinely matching every site. Without this guard the empty result reaches
+        # .to_dataframe() below and surfaces as an unrelated-looking KeyError.
+        raise RuntimeError(
+            f"dbSNP filter removed all {len(sites):,} candidate sites, which is not a "
+            f"plausible result. The bedtools intersect against {dbsnp_bed_path} most "
+            f"likely failed (out of memory, or a truncated/malformed dbSNP BED) rather "
+            f"than genuinely matching every site. Refusing to emit an empty edit set."
+        )
     keep_keys = set(non_overlapping.to_dataframe()["name"])
 
     site_key = df["contig"] + "_" + df["position"].astype(str)
@@ -69,9 +108,33 @@ def filter_min_total_edits(df, min_count=3):
     return df[site_totals >= min_count].copy()
 
 
-def filter_max_editing_fraction(df, max_frac=0.05):
-    """Remove rows where edit_fraction > max_frac."""
+def filter_max_editing_fraction(df, max_frac=0.10):
+    """Remove rows where a cell's edit_fraction at a site exceeds max_frac.
+
+    Per (cell, site), not per site. Doubles as a germline-variant filter: a SNP
+    sits at edit_fraction ~1.0 in the cells carrying it, so this drops it even
+    when dbSNP does not list it. Costs sensitivity in return -- a row needs
+    coverage >= 1/max_frac in that one cell to survive with a single edit.
+    """
     return df[df["edit_fraction"] <= max_frac].copy()
+
+
+def filter_max_site_editing_fraction(df, max_frac=0.05):
+    """Drop sites whose edited-read fraction across all cells exceeds max_frac.
+
+    Off by default. MARINE emits rows only for cells that HAVE an edit at a
+    site, so summing `coverage` here gives coverage in edited cells only, not
+    total coverage at the site -- the resulting fraction is biased low for genes
+    with many deeply covered edited cells. Measured on rep1 chr19 it retains 7
+    genes (Malat1 dominating) and halves C>T purity, so it is exposed as an
+    opt-in experiment rather than part of the default chain. Computing this
+    correctly needs MARINE's full coverage matrix, including unedited cells.
+    """
+    grouped = df.groupby(["contig", "position"])
+    site_frac = (
+        grouped["count"].transform("sum") / grouped["coverage"].transform("sum")
+    )
+    return df[site_frac <= max_frac].copy()
 
 
 def filter_unannotated(df):
@@ -157,12 +220,14 @@ def main():
     parser.add_argument("--min-count", type=int, default=3,
                         help="Min total edited reads per site (Filter 3)")
     parser.add_argument("--max-frac", type=float, default=0.10,
-                        help="Max editing fraction (Filter 4)")
+                        help="Max per-cell editing fraction at a site (Filter 4)")
+    parser.add_argument("--site-max-frac", type=float, default=0.05,
+                        help="Max per-site editing fraction across all cells (Filter 6)")
     parser.add_argument("--output-dir", "-o", default=None,
                         help="Directory to save all outputs (TSVs + images)")
     # ── Per-filter on/off controls (set flag to skip that filter entirely) ────
     parser.add_argument("--no-filter-multi-conversion", action="store_true", default=False,
-                        help="Skip Filter 1 — multiple conversion types per barcode+site")
+                        help="Skip Filter 1 — sites showing multiple conversion types")
     parser.add_argument("--no-filter-dbsnp",            action="store_true", default=False,
                         help="Skip Filter 2 — dbSNP overlap removal")
     parser.add_argument("--no-filter-min-count",        action="store_true", default=False,
@@ -171,6 +236,9 @@ def main():
                         help="Skip Filter 4 — max editing-fraction threshold")
     parser.add_argument("--no-filter-unannotated",      action="store_true", default=False,
                         help="Skip Filter 5 — unannotated site removal")
+    # Filter 6 is opt-in rather than opt-out: see filter_max_site_editing_fraction.
+    parser.add_argument("--filter-site-max-frac",       action="store_true", default=False,
+                        help="Enable Filter 6 — per-site editing-fraction threshold")
     args = parser.parse_args()
 
     if args.output_dir:
@@ -190,7 +258,7 @@ def main():
         print("\nFilter 1: SKIPPED (--no-filter-multi-conversion)")
         df_01 = df
     else:
-        print("\nFilter 1: Remove multiple conversion types per barcode + site")
+        print("\nFilter 1: Remove sites with multiple conversion types across all cells")
         df_01 = filter_multi_conversion(df)
         _report(df, df_01)
     steps.append(("After F1\n(multi-conversion)", df_01))
@@ -220,10 +288,10 @@ def main():
         print("\nFilter 4: SKIPPED (--no-filter-max-frac)")
         df_04 = df_03
     else:
-        print(f"\nFilter 4: Remove editing fraction > {args.max_frac}")
+        print(f"\nFilter 4: Remove cell-site entries with edit fraction > {args.max_frac}")
         df_04 = filter_max_editing_fraction(df_03, max_frac=args.max_frac)
         _report(df_03, df_04)
-    steps.append((f"After F4\n(frac > {args.max_frac})", df_04))
+    steps.append((f"After F4\n(cell frac > {args.max_frac})", df_04))
 
     # ---- Filter 5 -----------------------------------------------------------
     if args.no_filter_unannotated:
@@ -235,7 +303,20 @@ def main():
         _report(df_04, df_05)
     steps.append(("After F5\n(unannotated)", df_05))
 
-    df_final = df_05
+    # ---- Filter 6 (opt-in) --------------------------------------------------
+    if not args.filter_site_max_frac:
+        print("\nFilter 6: SKIPPED (enable with --filter-site-max-frac)")
+        df_06 = df_05
+    else:
+        print(f"\nFilter 6: Remove sites with per-site edit fraction > {args.site_max_frac}")
+        df_06 = filter_max_site_editing_fraction(df_05, max_frac=args.site_max_frac)
+        _report(df_05, df_06)
+    # Appended unconditionally, like every other filter, so the summary table and
+    # the pie/histogram grids always show all six steps -- a skipped filter shows
+    # as a no-op row rather than vanishing from the figures.
+    steps.append((f"After F6\n(site frac > {args.site_max_frac})", df_06))
+
+    df_final = df_06
 
     # ---- Summary table ------------------------------------------------------
     print("\n--- Summary ---")

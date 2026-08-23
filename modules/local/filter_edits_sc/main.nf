@@ -8,7 +8,7 @@ process FILTER_EDITS_SC {
     publishDir { "${params.outdir}/03_filter_sc/${meta.id}" }, mode: params.publish_dir_mode
 
     conda 'conda-forge::python>=3.8 conda-forge::pandas>=2.0 bioconda::pybedtools>=0.9 conda-forge::matplotlib-base>=3.7'
-    container "docker.io/aravindsundaravadivelu/ribostamp_utils:1.0.0"
+    container { params.ribostamp_utils_sif as String ?: 'docker.io/aravindsundaravadivelu/ribostamp_utils:1.0.0' }
 
     input:
     tuple val(meta), path(marine_dir)
@@ -16,6 +16,11 @@ process FILTER_EDITS_SC {
 
     output:
     tuple val(meta), path("filtered_edits.tsv"), emit: filtered
+    tuple val(meta), path("filter_summary.tsv"), emit: summary,  optional: true
+    // piecharts.png and edit_fraction_histograms.png, written to the output root
+    // rather than a plots/ subdir as in the bulk script. Optional because this
+    // script has no zero-edit short-circuit, so plotting can be skipped.
+    tuple val(meta), path("*.png"),              emit: plots,    optional: true
     path "versions.yml",                          emit: versions
 
     script:
@@ -26,6 +31,8 @@ process FILTER_EDITS_SC {
         params.filter_sc_min_count        ? "" : "--no-filter-min-count",
         params.filter_sc_max_frac         ? "" : "--no-filter-max-frac",
         params.filter_sc_unannotated      ? "" : "--no-filter-unannotated",
+        // Filter 6 is opt-in, so this flag enables rather than skips.
+        params.filter_sc_site_max_frac    ? "--filter-site-max-frac" : "",
     ].findAll { it }.join(" ")
     """
     helper_filter_edits_sc.py \\
@@ -33,6 +40,7 @@ process FILTER_EDITS_SC {
         --dbsnp-bed      ${dbsnp_bed} \\
         --min-count      ${params.min_count} \\
         --max-frac       ${params.max_frac} \\
+        --site-max-frac  ${params.site_max_frac} \\
         ${skip_flags} \\
         --output-dir     .
 

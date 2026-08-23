@@ -7,15 +7,17 @@ process NORMALIZE_EDITS_BULK {
     publishDir { "${params.outdir}/06_filter_normalize/${meta.id}/normalized" }, mode: params.publish_dir_mode
 
     conda 'conda-forge::python=3.8 conda-forge::pandas=2.0 conda-forge::matplotlib-base=3.7'
-    container "docker.io/aravindsundaravadivelu/ribostamp_utils:1.0.0"
+    container { params.ribostamp_utils_sif as String ?: 'docker.io/aravindsundaravadivelu/ribostamp_utils:1.0.0' }
 
     input:
     // combined by .combine() in subworkflow: matrix is broadcast 1-to-many across samples
     tuple val(meta), val(strandedness), path(filtered_edits), path(counts_matrix)
 
     output:
-    tuple val(meta), path("bedgraphs/"), emit: bedgraph_dir
-    path "versions.yml",                 emit: versions
+    tuple val(meta), path("bedgraphs/"),                    emit: bedgraph_dir
+    tuple val(meta), path("*.EPR_EPKM_normalized.tsv"),     emit: normalized
+    tuple val(meta), path("*.edits.length_annotated.tsv"),  emit: length_annotated
+    path "versions.yml",                                    emit: versions
 
     script:
     def prefix = meta.id

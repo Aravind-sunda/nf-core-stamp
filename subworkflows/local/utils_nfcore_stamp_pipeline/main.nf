@@ -185,19 +185,21 @@ def validateInputParameters() {
         if (!params.run_marine && !params.run_sailor) {
             error("--mode bulk: at least one of --run_marine or --run_sailor must be true.")
         }
-        if (params.run_sailor && !params.run_marine) {
-            // SAILOR-only from BAM: strandedness must be supplied
-            if (params.strandedness == null) {
-                error("--run_sailor true without --run_marine requires --strandedness (0, 1, or 2).")
-            }
-        }
+        // No --strandedness requirement for SAILOR-only runs: BULK_PREPROCESS runs
+        // INFER_STRANDEDNESS for every bulk sample regardless of which callers are
+        // enabled, and the workflow falls back to that consensus. --strandedness
+        // remains available to override it.
         if (params.run_sailor) {
             if (!params.sailor_snakefile) {
                 error("--run_sailor true requires --sailor_snakefile (path to SAILOR Snakefile).")
             }
         }
-        if (params.run_sailor && !params.fasta) {
-            error("--run_sailor true requires --fasta (genome FASTA for SAILOR's internal calmd step).")
+        // MARINE needs the FASTA for its calmd step and SAILOR for its Snakemake
+        // rules, so it is required for any bulk run. Both modules declare it as a
+        // mandatory input, so a missing value leaves an empty channel and the
+        // process is skipped silently rather than failing.
+        if (!params.fasta) {
+            error("--mode bulk requires --fasta (MARINE calmd step / SAILOR Snakemake rules).")
         }
         if (params.run_flare) {
             // FLARE (RBP-STAMP) operates on SAILOR outputs, so SAILOR must run.
@@ -218,13 +220,16 @@ def validateInputParameters() {
         if (!params.dbsnp_bed) {
             error("--mode bulk requires --dbsnp_bed (dbSNP BED file).")
         }
-        if (params.run_marine) {
-            if (!params.gtf) {
-                error("--run_marine true requires --gtf (GTF annotation file).")
-            }
-            if (!params.genome && !params.genepred) {
-                error("--run_marine true requires either --genome (to select built-in genePred) or --genepred (custom genePred file) for metaPlotR.")
-            }
+        // These were previously gated on --run_marine, from when alignment and
+        // quantification lived inside BULK_MARINE. BULK_PREPROCESS now runs them for
+        // every bulk run, and both callers end in a metaPlotR step, so gating them
+        // let a SAILOR-only run start with an empty channel and skip featureCounts
+        // or metaPlotR without reporting anything.
+        if (!params.gtf) {
+            error("--mode bulk requires --gtf (STAR and featureCounts run for every bulk run).")
+        }
+        if (!params.genome && !params.genepred) {
+            error("--mode bulk requires either --genome (to select a built-in genePred) or --genepred (custom genePred file) for metaPlotR.")
         }
     }
 
@@ -297,6 +302,14 @@ def classifyAndValidateRow(meta, fastq_1, fastq_2, bam, library_type, fastq_dir,
             // library_type required
             if (!has_lib) {
                 error("Sample '${sample}' [bulk FASTQ]: 'library_type' (SE or PE) is required.")
+            }
+            // --star_index is only needed for FASTQ-start samples, so it cannot be
+            // checked in validateInputParameters() — that runs before the samplesheet
+            // is read. Without it STAR_ALIGN gets an empty channel and is skipped, so
+            // the sample would silently produce no BAM and vanish from the results.
+            if (!params.star_index) {
+                error("Sample '${sample}' [bulk FASTQ]: --star_index is required to align FASTQ input. " +
+                      "Supply --star_index, or provide a pre-aligned 'bam' instead.")
             }
             // SE/PE consistency
             if (library_type == 'SE' && has_fastq_2) {

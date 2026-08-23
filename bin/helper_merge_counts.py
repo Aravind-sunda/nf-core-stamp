@@ -23,7 +23,10 @@ import sys
 import pandas as pd
 
 
-ANNOTATION_COLS = ["Chr", "Start", "End", "Strand", "Length"]
+# Everything that is not a per-sample count column. gene_id is emitted by
+# featureCounts --extraAttributes; it must be listed here or load_featurecounts()
+# mistakes it for a second count column and aborts.
+ANNOTATION_COLS = ["Chr", "Start", "End", "Strand", "Length", "gene_id"]
 
 
 def parse_args():
@@ -31,7 +34,15 @@ def parse_args():
     parser.add_argument("--indir",   required=True, help="Directory containing per-sample featureCounts .txt files")
     parser.add_argument("--outfile", required=True, help="Output TSV path for the merged count matrix")
     parser.add_argument("--suffix",  default=".featurecounts.txt", help="File suffix to glob for (default: .featurecounts.txt)")
-    parser.add_argument("--drop-annotation", action="store_true", help="Drop Chr/Start/End/Strand/Length columns from output")
+    # Deliberately not exposed by the pipeline: MERGE_COUNTS never passes this.
+    # helper_normalize_edits_bulk.py reads Length from this same matrix to compute
+    # EPKM/EPKMR, and its process_feature_counts() drops the annotation columns
+    # unconditionally — so a matrix built with this flag breaks NORMALIZE_EDITS_BULK.
+    # Kept for standalone use only.
+    parser.add_argument("--drop-annotation", action="store_true",
+                        help="Drop Chr/Start/End/Strand/Length columns from output. "
+                             "Standalone use only — the pipeline never sets this, because "
+                             "NORMALIZE_EDITS_BULK requires the Length column.")
     return parser.parse_args()
 
 
@@ -72,13 +83,17 @@ def main():
         merged[name] = df[name]
         print(f"[LOG] Loaded {name}")
 
+    # errors="ignore" so matrices produced before --extraAttributes was added
+    # (no gene_id column) still work.
+    n_annotation = sum(c in merged.columns for c in ANNOTATION_COLS)
     if args.drop_annotation:
-        merged = merged.drop(columns=ANNOTATION_COLS)
+        merged = merged.drop(columns=ANNOTATION_COLS, errors="ignore")
+        n_annotation = 0
 
     os.makedirs(os.path.dirname(os.path.abspath(args.outfile)), exist_ok=True)
     merged.to_csv(args.outfile, sep="\t")
     print(f"[DONE] Count matrix written to {args.outfile}")
-    print(f"[DONE] Shape: {merged.shape[0]} genes x {merged.shape[1] - len(ANNOTATION_COLS) if not args.drop_annotation else merged.shape[1]} samples")
+    print(f"[DONE] Shape: {merged.shape[0]} genes x {merged.shape[1] - n_annotation} samples")
 
 
 if __name__ == "__main__":

@@ -203,6 +203,13 @@
                     "description": "Minimum read mapping quality for MARINE. Use 255 for CellRanger-mapped BAMs (CellRanger assigns 255 to uniquely mapped reads).",
                     "minimum": 0,
                     "fa_icon": "fas fa-filter"
+                },
+                "min_dist_from_end": {
+                    "type": "integer",
+                    "default": 0,
+                    "description": "Number of bases at each read end that MARINE ignores when calling edits. Base quality drops off near read ends, so untrimmed ends contribute sequencing errors across all conversion types and dilute the expected C>T signal.",
+                    "minimum": 0,
+                    "fa_icon": "fas fa-cut"
                 }
             }
         },
@@ -222,7 +229,15 @@
                 "max_frac": {
                     "type": "number",
                     "default": 0.1,
-                    "description": "Maximum editing fraction. Sites with a fraction above this cutoff are filtered as likely SNPs or mismatches.",
+                    "description": "Maximum editing fraction. Entries above this cutoff are filtered as likely SNPs or mismatches. In sc mode this is evaluated per (cell, site), so a germline variant is dropped even when dbSNP does not list it.",
+                    "minimum": 0,
+                    "maximum": 1,
+                    "fa_icon": "fas fa-percentage"
+                },
+                "site_max_frac": {
+                    "type": "number",
+                    "default": 0.05,
+                    "description": "Maximum across-cell editing fraction per site, used by the opt-in sc Filter 6 (filter_sc_site_max_frac). Note MARINE reports coverage only for cells that carry an edit, so this fraction is biased low for deeply covered genes.",
                     "minimum": 0,
                     "maximum": 1,
                     "fa_icon": "fas fa-percentage"
@@ -272,7 +287,7 @@
                 "filter_sc_max_frac": {
                     "type": "boolean",
                     "default": true,
-                    "description": "SC F4: remove sites where edit_fraction exceeds --max_frac.",
+                    "description": "SC F4: remove (cell, site) entries where that cell's edit_fraction exceeds --max_frac.",
                     "fa_icon": "fas fa-times-circle"
                 },
                 "filter_sc_unannotated": {
@@ -280,6 +295,12 @@
                     "default": true,
                     "description": "SC F5: remove sites with no gene annotation (feature_type == -1).",
                     "fa_icon": "fas fa-times-circle"
+                },
+                "filter_sc_site_max_frac": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "SC F6 (opt-in): remove sites whose across-cell edit fraction exceeds --site_max_frac. Off by default -- on rep1 chr19 it retained only 7 genes and halved C>T purity, because MARINE reports coverage only for edited cells.",
+                    "fa_icon": "fas fa-flask"
                 }
             }
         },
@@ -289,6 +310,15 @@
             "fa_icon": "fas fa-ship",
             "description": "Options for the SAILOR Bayesian edit-calling Snakemake pipeline. Only used when --mode bulk and --run_sailor true.",
             "properties": {
+                "sailor_conf": {
+                    "type": "number",
+                    "default": 0.5,
+                    "minimum": 0,
+                    "maximum": 1,
+                    "description": "Minimum SAILOR confidence score for an edit site to enter EPR/EPKM normalization.",
+                    "help_text": "SAILOR scores each site with a Bayesian posterior confidence between 0 and 1. Sites below this threshold are excluded from NORMALIZE_EDITS_SAILOR. This does not affect the ranked BED files themselves, nor the metaPlotR tiers, which always report all / >=0.5 / >=0.9 separately.",
+                    "fa_icon": "fas fa-filter"
+                },
                 "sailor_snakefile": {
                     "type": "string",
                     "format": "file-path",

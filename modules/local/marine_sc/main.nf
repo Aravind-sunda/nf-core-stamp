@@ -5,7 +5,14 @@
 process MARINE_SC {
     tag "${meta.id}"
     label 'process_marine_sc'
-    publishDir { "${params.outdir}/02_marine_sc/${meta.id}" }, mode: params.publish_dir_mode
+    // MARINE writes into a folder named after the sample (--output_folder below), so
+    // results land directly in 02_marine_sc/<sample>/ rather than a nested subfolder.
+    // saveAs drops versions.yml, which would otherwise collide across samples at
+    // 02_marine_sc/; it is still emitted below and aggregated into pipeline_info/.
+    // Must be saveAs rather than `pattern`: pattern is evaluated eagerly, where meta
+    // is not in scope, so referencing it there fails with "No such variable: meta".
+    publishDir { "${params.outdir}/02_marine_sc" }, mode: params.publish_dir_mode,
+        saveAs: { filename -> filename.equals('versions.yml') ? null : filename }
 
     // No conda directive: MARINE has no Bioconda package.
     // Use -profile singularity or -profile docker; -profile conda is not supported for this process.
@@ -17,8 +24,8 @@ process MARINE_SC {
     path gene_bed
 
     output:
-    tuple val(meta), path("marine_output/"), emit: results
-    path "versions.yml",                     emit: versions
+    tuple val(meta), path("${meta.id}/"), emit: results
+    path "versions.yml",                  emit: versions
 
     script:
     def prefix = meta.id
@@ -51,14 +58,15 @@ process MARINE_SC {
     # Run MARINE in single-cell mode (strandedness=2 is always correct for 10x STAMP)
     python /opt/MARINE/marine.py \\
         --bam_filepath            "\${FINAL_BAM}" \\
-        --output_folder           marine_output \\
+        --output_folder           ${prefix} \\
         --barcode_whitelist_file  "\${BARCODES}" \\
         --annotation_bedfile_path ${gene_bed} \\
         --barcode_tag             ${params.barcode_tag} \\
         --strandedness            2 \\
         --cores                   ${task.cpus} \\
         --min_read_quality        ${params.min_read_quality} \\
-        --min_base_quality        ${params.min_base_quality}
+        --min_base_quality        ${params.min_base_quality} \\
+        --min_dist_from_end       ${params.min_dist_from_end}
 
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":

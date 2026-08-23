@@ -7,7 +7,7 @@ process FILTER_EDITS_BULK {
     publishDir { "${params.outdir}/06_filter_normalize/${meta.id}/filtered" }, mode: params.publish_dir_mode
 
     conda 'conda-forge::python=3.8 conda-forge::pandas=2.0 bioconda::pybedtools=0.9 conda-forge::matplotlib-base=3.7'
-    container "docker.io/aravindsundaravadivelu/ribostamp_utils:1.0.0"
+    container { params.ribostamp_utils_sif as String ?: 'docker.io/aravindsundaravadivelu/ribostamp_utils:1.0.0' }
 
     input:
     tuple val(meta), val(strandedness), path(marine_dir)
@@ -16,6 +16,10 @@ process FILTER_EDITS_BULK {
 
     output:
     tuple val(meta), val(strandedness), path("filtered_edits.tsv"), emit: filtered
+    tuple val(meta), path("filter_summary.tsv"),                    emit: summary
+    // plots/ is created before the zero-edit short-circuit, so it always exists
+    // (possibly empty) and needs no optional flag.
+    tuple val(meta), path("plots/"),                                emit: plots
     path "versions.yml",                                            emit: versions
 
     script:

@@ -317,10 +317,28 @@ def filter_reads(
             # Manually setting reversed reads to 'sense' strand per truseq
             library protocols (Default is truseq reverse stranded)
             """
+            # LOCAL PATCH (stamp): paired-end mates are sequenced inward from the
+            # two ends of one fragment, so mate 2 always aligns to the opposite
+            # strand from mate 1. Deriving sense from read.is_reverse alone gives
+            # the two mates of a pair opposite answers about the same fragment,
+            # so half of every strand-split BAM is scored against the complement
+            # of the target edit. Flip mate 2's bit back to recover the fragment
+            # orientation that split_strands.py already used to build this file.
+            # No-op for single-end reads. See LOCAL_MODIFICATIONS.md.
+            #
+            # LEGACY (upstream, single-end only):
+            #     if reverse_stranded:
+            #         sense = True if read.is_reverse == True else False
+            #     else:
+            #         sense = True if read.is_reverse == False else False
+            read_strand = read.is_reverse
+            if read.is_paired and read.is_read2:
+                read_strand = not read_strand
+
             if reverse_stranded:
-                sense = True if read.is_reverse == True else False
+                sense = read_strand
             else:
-                sense = True if read.is_reverse == False else False
+                sense = not read_strand
 
             """
             # 5c) Search MDZ for A, T's in reference, if mutations are not 
@@ -438,13 +456,21 @@ USAGE
             required=False,
             default=False
         )
+        # LOCAL PATCH (stamp): type=bool made bool("False") -> True, so any
+        # non-empty string parsed as True and this flag was ALWAYS True
+        # regardless of the Snakemake config. Forward-stranded (strandedness 1)
+        # libraries were therefore scored against the wrong strand. Take the
+        # value as a string and convert it below, matching how rank_edits.py
+        # handles --keep-100-edited. See LOCAL_MODIFICATIONS.md.
+        #
+        # LEGACY (upstream): type=bool,
         parser.add_argument(
             "-r", "--reverse_stranded",
             dest="reverse_stranded",
             help="reverse stranded library",
             required=True,
-            type=bool,
-            default=True
+            default="True",
+            choices=["True", "False"]
         )
         
         parser.add_argument(
@@ -464,7 +490,14 @@ USAGE
         min_underhang = args.min_underhang
         mm_tolerance = args.mm_tolerance
         save_filtered = args.save_filtered
+        # LOCAL PATCH (stamp): argparse hands this over as the string "True" or
+        # "False" (choices= above), so convert it to a real bool here. Same
+        # pattern as rank_edits.py for --keep-100-edited.
         reverse_stranded = args.reverse_stranded
+        if reverse_stranded == "True":
+            reverse_stranded = True
+        else:
+            reverse_stranded = False
         edit_type = args.edit_type
         
         flags = filter_reads(

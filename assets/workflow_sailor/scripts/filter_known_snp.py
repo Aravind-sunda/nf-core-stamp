@@ -85,6 +85,32 @@ def filter_known_snp(infile, known, outfile):
         return 0
     names2 = ['CHROM', 'START',
               'POS']  # POS is the 1-based position of the SNP.
+    # LOCAL PATCH (stamp) — NOT ENABLED. See assets/workflow_sailor/LOCAL_MODIFICATIONS.md
+    #
+    # The read_table below loads the entire dbSNP BED into a DataFrame (~600M rows /
+    # 15 GB for hg38, roughly 50-100 GB resident) purely to left-join it against a
+    # ~150k-row VCF. Running many of these concurrently is what OOM-killed the SAILOR
+    # step. Throttling concurrency via the `threads:` directive on rule
+    # filter_known_snp is the interim mitigation; inverting the join is the real fix
+    # and bounds peak memory to one chunk plus the VCF:
+    #
+    #     vcf_keys = set(zip(eff_df['CHROM'], eff_df['POS']))
+    #
+    #     hits = set()
+    #     reader = pd.read_table(known, names=names2, chunksize=5_000_000,
+    #                            compression='gzip' if known.endswith('.gz') else None,
+    #                            dtype={'CHROM': str, 'START': int, 'POS': int})
+    #     for chunk in reader:
+    #         m = pd.Series(list(zip(chunk['CHROM'], chunk['POS']))).isin(vcf_keys)
+    #         hits |= set(zip(chunk['CHROM'][m.values], chunk['POS'][m.values]))
+    #
+    #     keep = eff_df[~pd.Series(list(zip(eff_df['CHROM'], eff_df['POS']))).isin(hits).values]
+    #
+    # Equivalent to the existing merge: a VCF row matching k duplicate dbSNP entries
+    # expands to k rows that all carry KNOWN=1 and are dropped anyway, so "drop if
+    # present in dbSNP" is exactly set membership. Note this still streams the full
+    # dbSNP once per job; avoiding that repetition across samples would mean
+    # restructuring the Snakefile rule itself.
     if known.endswith('.gz'):
         snp_df = pd.read_table(known, compression='gzip', names=names2, dtype={'CHROM': str, 'START': int, 'POS': int})
     else:

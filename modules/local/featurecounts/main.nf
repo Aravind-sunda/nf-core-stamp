@@ -1,3 +1,8 @@
+// Counts reads per gene. Genes are grouped by gene_name (-g) because MARINE and
+// SAILOR annotate edit sites with gene symbols, so the Geneid column has to match
+// those. gene_id is carried alongside via --extraAttributes purely for downstream
+// convenience: it is explicitly not used for grouping, so counts and every
+// normalisation derived from them are identical with or without it.
 process FEATURECOUNTS {
     tag "${meta.id}"
     label 'process_medium'
@@ -24,6 +29,7 @@ process FEATURECOUNTS {
         -a ${gtf} \\
         -t exon \\
         -g gene_name \\
+        --extraAttributes gene_id \\
         -s ${strandedness} \\
         ${pe_flag} \\
         -o ${prefix}.featurecounts.txt \\
