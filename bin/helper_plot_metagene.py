@@ -20,9 +20,59 @@ Default plot is a per-library KDE density (each library normalised to area 1),
 so libraries with different numbers of sites are compared by shape, not depth.
 Use --counts to scale each KDE by its site count (area under curve = N sites),
 making between-sample editing depth differences visible while keeping smooth
-lines. Add --histogram to switch from smooth KDE lines to binned bars instead.
+lines. The y-axis is then sites per unit metagene coordinate, which can exceed
+N. Add --per-bin to instead express the count-scaled curve as number of sites
+per bin (y = N * density * bin_width), matching the "Edit number (Unscaled)"
+y-axis of the Yeo lab metaPlotR figures — this y-axis is bounded by N and is
+directly readable as a site count. Add --histogram to switch from smooth KDE
+lines to binned bars (with --counts these are raw per-bin site counts).
+
+Recommended invocation
+----------------------
+For a publication metagene where both the SHAPE (where sites fall) and the
+DEPTH (how many sites) matter, use --counts --per-bin --bins 30. This gives a
+smooth curve whose y-axis is a plain site count per bin, bounded by N, and is
+directly comparable to the Yeo lab "Edit number (Unscaled)" panels:
+
+    python helper_plot_metagene.py \
+        SAMPLE_A.conf0.99.dist.measures.txt \
+        SAMPLE_B.conf0.99.dist.measures.txt \
+        SAMPLE_C.conf0.99.dist.measures.txt \
+        --labels SAMPLE_A,SAMPLE_B,SAMPLE_C \
+        --counts --per-bin --bins 30 \
+        --title "Metagene distribution of edit sites" \
+        --figsize 6,4 --dpi 300 \
+        --out metagene.counts.png
+
+Choosing the y-axis:
+    (no flag)                 Density, area = 1 per library. Compares SHAPE
+                              only; libraries of very different depth overlay.
+                              Use when depth is a nuisance, not the result.
+    --counts                  Sites per unit metagene coordinate (area = N).
+                              Correct but hard to read: because sites pile into
+                              a narrow slice of the 0-3 axis, the peak can be
+                              several times larger than N. Prefer --per-bin.
+    --counts --per-bin        Sites per bin. Peak matches the tallest bar of
+                              the equivalent histogram and is bounded by N.
+                              This is the recommended axis.
+    --counts --histogram      Raw per-bin counts drawn as step bars. Same axis
+                              as --per-bin, unsmoothed; useful as a sanity
+                              check that the KDE is not distorting the peak.
+
+Other flags worth knowing:
+    --bins 30                 Sets both histogram bins and the --per-bin width.
+                              30 matches the Yeo figures; 100 (the default) is
+                              finer but makes the per-bin counts smaller.
+    --rescale                 Sizes each region panel by its median length, so
+                              the picture reflects real mRNA proportions. It
+                              compresses the 3'UTR, where STAMP signal usually
+                              is, so leave it off unless proportion is the point.
+    --facet                   One panel per library instead of an overlay. Use
+                              when depth differences are large enough that small
+                              libraries vanish under the big ones.
 
 Requires: pandas, numpy, scipy, matplotlib.
+
 """
 
 import argparse
@@ -106,13 +156,15 @@ def rescale_coords(r, utr5_sf, utr3_sf):
 
 
 def draw_series(ax, c, color, grid, xlo, xhi, histogram, counts, bins,
-                bw_adjust, label=None):
+                bw_adjust, per_bin=False, label=None):
     """Draw one library's distribution on ax. Returns False if a KDE could
     not be computed (too few/degenerate points).
 
     With counts=True and histogram=False: KDE is scaled by N (number of sites)
     so the area under the curve equals N. This makes between-sample differences
-    in editing depth visible while keeping smooth lines.
+    in editing depth visible while keeping smooth lines. Adding per_bin=True
+    additionally multiplies by the bin width, so the curve reads as the number
+    of sites per bin (bounded by N) rather than sites per unit coordinate.
     """
     if histogram:
         ax.hist(c, bins=bins, range=(xlo, xhi), density=not counts,
@@ -128,6 +180,11 @@ def draw_series(ax, c, color, grid, xlo, xhi, histogram, counts, bins,
         # y-axis becomes "sites per unit metagene coordinate" — between-sample
         # depth differences are visible while the curve remains smooth.
         y = y * len(c)
+        if per_bin:
+            # Convert to sites per bin, i.e. what a --histogram --counts bar
+            # of the same width would show. Bounded by N, so the axis reads
+            # directly as a number of sites.
+            y = y * (xhi - xlo) / bins
     ax.plot(grid, y, color=color, linewidth=2.0, label=label)
     ax.fill_between(grid, y, color=color, alpha=0.08)
     return True
@@ -167,8 +224,16 @@ def main():
                     help="Scale each curve/bar by its site count (area = N sites). "
                          "Makes between-sample editing depth differences visible. "
                          "Works for both KDE (default smooth lines) and --histogram.")
+    ap.add_argument("--per-bin", action="store_true",
+                    help="With --counts, express the smooth curve as number of "
+                         "sites per bin (y = N * density * bin_width) instead of "
+                         "sites per unit metagene coordinate. The y-axis is then "
+                         "bounded by the site count and reads directly as an "
+                         "edit number. Bin width is set by --bins. No effect "
+                         "with --histogram (already per-bin counts).")
     ap.add_argument("--bins", type=int, default=100,
-                    help="Histogram bin count (default 100).")
+                    help="Bin count: histogram bins, and the bin width used by "
+                         "--per-bin (default 100).")
     ap.add_argument("--bw-adjust", type=float, default=1.0,
                     help="KDE bandwidth multiplier (default 1.0; smaller = "
                          "sharper).")
@@ -221,7 +286,12 @@ def main():
     xlabel = ("Metagene coordinate"
               + (" (rescaled by median region length)" if args.rescale
                  else "  (0-1 5'UTR | 1-2 CDS | 2-3 3'UTR)"))
-    ylabel = "Site density (count-scaled)" if args.counts else "Density"
+    if not args.counts:
+        ylabel = "Density"
+    elif args.histogram or args.per_bin:
+        ylabel = f"Number of sites (per bin, {args.bins} bins)"
+    else:
+        ylabel = "Sites per unit metagene coordinate"
     fw = fh = None
     if args.figsize:
         fw, fh = (float(x) for x in args.figsize.split(","))
@@ -237,7 +307,7 @@ def main():
         for i, (lab, c) in enumerate(zip(labels, coords)):
             ok = draw_series(flat[i], c, cmap(i % cmap.N), grid, xlo, xhi,
                              args.histogram, args.counts, args.bins,
-                             args.bw_adjust)
+                             args.bw_adjust, per_bin=args.per_bin)
             flat[i].set_title(f"{lab} (n={len(c)})", fontsize=10)
             if not ok:
                 flat[i].text(0.5, 0.5, "insufficient data for KDE",
@@ -259,7 +329,8 @@ def main():
         for i, (lab, c) in enumerate(zip(labels, coords)):
             drawn = draw_series(ax, c, cmap(i % cmap.N), grid, xlo, xhi,
                                 args.histogram, args.counts, args.bins,
-                                args.bw_adjust, label=f"{lab} (n={len(c)})")
+                                args.bw_adjust, per_bin=args.per_bin,
+                                label=f"{lab} (n={len(c)})")
             if not drawn:
                 log(f"WARN: {labels[i]} has too few/invariant points for KDE; "
                     "skipping.")
