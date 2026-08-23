@@ -12,8 +12,10 @@
 #    • --validate (on render)        → new: runs the geometry oracle on the drawn SVG
 #
 #  Layout flags shared by every render below:
-#    • --line-spread centered  balance bundles about the midline; cuts the canvas
-#      ~20% versus the default 'bundle' with no loss of clarity.
+#    • --line-spread bundle    keep parallel lines packed together as one bundle.
+#      This is nf-metro's default, passed explicitly so a change to that default
+#      cannot silently restyle the map. 'centered' (bundles balanced about the
+#      midline) was used previously — it is ~20% narrower but reads worse here.
 #    • --directional           chevrons along every route, so the FASTQ/BAM inputs
 #      and every downstream hop show flow direction.
 #    • --mode                  bakes that mode's palette in rather than leaving it
@@ -29,7 +31,7 @@
 #      in the pre-processing bundle, because each station is sized only for the
 #      lines crossing it.
 #    • --line-spread rails  rejected by nf-metro's routing invariants on this map
-#      (bundle-order flip at bam_bulk_in -> infer_strand).
+#      (bundle-order flip at resume_bam_bulk -> infer_strand).
 # ─────────────────────────────────────────────────────────────────────────────
 # Activate before 'set -u': the cluster's MKL activation hook reads unset
 # variables, which would abort the script.
@@ -46,7 +48,7 @@ nf-metro render metro_map.mmd \
     --theme nfcore \
     --diamond-style straight \
     --center-ports \
-    --line-spread centered \
+    --line-spread bundle \
     --directional \
     --mode dark \
     --validate \
@@ -58,7 +60,7 @@ nf-metro render metro_map.mmd \
     --theme nfcore \
     --diamond-style straight \
     --center-ports \
-    --line-spread centered \
+    --line-spread bundle \
     --directional \
     --mode light \
     --validate \
@@ -73,7 +75,7 @@ nf-metro render metro_map.mmd \
     --theme nfcore \
     --diamond-style straight \
     --center-ports \
-    --line-spread centered \
+    --line-spread bundle \
     --directional \
     --mode dark \
     --animate \
@@ -86,7 +88,7 @@ nf-metro render metro_map.mmd \
     --theme nfcore \
     --diamond-style straight \
     --center-ports \
-    --line-spread centered \
+    --line-spread bundle \
     --directional \
     --mode light \
     --animate \
@@ -100,7 +102,7 @@ nf-metro render metro_map.mmd \
     --theme nfcore \
     --diamond-style straight \
     --center-ports \
-    --line-spread centered \
+    --line-spread bundle \
     --directional \
     --mode dark \
     --format html \
@@ -112,7 +114,7 @@ nf-metro render metro_map.mmd \
     --theme nfcore \
     --diamond-style straight \
     --center-ports \
-    --line-spread centered \
+    --line-spread bundle \
     --directional \
     --mode light \
     --format html \
