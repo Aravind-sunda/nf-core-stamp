@@ -106,7 +106,7 @@ nf-core/stamp was originally written and tested by Aravind Sundaravadivelu and  
 
 We thank the following people for their extensive assistance in the development of this pipeline:
 
-- The [Brannan Lab](https://www.houstonmethodist.org/) at Houston Methodist Research Institute.
+- The [Brannan Lab](https://brannan.hmailabs.org/) at Houston Methodist Research Institute.
 - The [Yeo Lab](https://yeolab.com/) at UC San Diego, for MARINE, SAILOR and FLARE.
 
 ## Contributions and Support
