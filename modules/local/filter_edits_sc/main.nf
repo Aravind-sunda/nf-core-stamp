@@ -31,6 +31,8 @@ process FILTER_EDITS_SC {
         params.filter_sc_min_count        ? "" : "--no-filter-min-count",
         params.filter_sc_max_frac         ? "" : "--no-filter-max-frac",
         params.filter_sc_unannotated      ? "" : "--no-filter-unannotated",
+        // Filter 6 is opt-in, so this flag enables rather than skips.
+        params.filter_sc_site_max_frac    ? "--filter-site-max-frac" : "",
     ].findAll { it }.join(" ")
     """
     helper_filter_edits_sc.py \\
@@ -38,6 +40,7 @@ process FILTER_EDITS_SC {
         --dbsnp-bed      ${dbsnp_bed} \\
         --min-count      ${params.min_count} \\
         --max-frac       ${params.max_frac} \\
+        --site-max-frac  ${params.site_max_frac} \\
         ${skip_flags} \\
         --output-dir     .
 
