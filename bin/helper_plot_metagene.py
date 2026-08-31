@@ -214,7 +214,13 @@ def main():
                     help="Output image (extension sets format: .png/.pdf/.svg).")
     ap.add_argument("--labels", default=None,
                     help="Comma-separated legend labels, one per file "
-                         "(default: file basenames).")
+                         "(default: file basenames). Underscores are shown as "
+                         "spaces in the legend/panel titles, e.g. "
+                         "RBFOX2_STAMP_high_DOX -> 'RBFOX2 STAMP high DOX' "
+                         "(see --keep-underscores).")
+    ap.add_argument("--keep-underscores", action="store_true",
+                    help="Show labels verbatim instead of replacing "
+                         "underscores with spaces.")
     ap.add_argument("--rescale", action="store_true",
                     help="Rescale 5'UTR/3'UTR widths by median length "
                          "relative to CDS (metaPlotR-style).")
@@ -261,6 +267,11 @@ def main():
     else:
         labels = [os.path.splitext(os.path.basename(f))[0] for f in args.files]
 
+    # What actually gets drawn: underscores read as word gaps in the legend.
+    # `labels` stays verbatim so log lines still match the file names.
+    display_labels = (labels if args.keep_underscores
+                      else [l.replace("_", " ") for l in labels])
+
     # Load + check every file
     log("Loading and checking input files...")
     dfs = [load_and_check(f, args.allow_multi_isoform) for f in args.files]
@@ -304,7 +315,7 @@ def main():
         fig, axes = plt.subplots(nrows, ncols, figsize=figsize,
                                  sharex=True, sharey=True, squeeze=False)
         flat = axes.flatten()
-        for i, (lab, c) in enumerate(zip(labels, coords)):
+        for i, (lab, c) in enumerate(zip(display_labels, coords)):
             ok = draw_series(flat[i], c, cmap(i % cmap.N), grid, xlo, xhi,
                              args.histogram, args.counts, args.bins,
                              args.bw_adjust, per_bin=args.per_bin)
@@ -326,7 +337,7 @@ def main():
         fig.tight_layout()
     else:
         fig, ax = plt.subplots(figsize=(fw, fh) if fw else (8, 4.5))
-        for i, (lab, c) in enumerate(zip(labels, coords)):
+        for i, (lab, c) in enumerate(zip(display_labels, coords)):
             drawn = draw_series(ax, c, cmap(i % cmap.N), grid, xlo, xhi,
                                 args.histogram, args.counts, args.bins,
                                 args.bw_adjust, per_bin=args.per_bin,
