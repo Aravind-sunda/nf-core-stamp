@@ -3,6 +3,8 @@
     SC MARINE SUBWORKFLOW
     Steps (FASTQ-start): CellRanger → MARINE_SC → FILTER_EDITS_SC → NORMALIZE_EDITS_SC
     Steps (BAM-start):              → MARINE_SC → FILTER_EDITS_SC → NORMALIZE_EDITS_SC
+    With filter_sc_site_max_frac, SITE_DEPTH_SC → FILTER_SITE_FRAC_SC (F5) run
+    between FILTER_EDITS_SC and NORMALIZE_EDITS_SC.
 
     Strandedness is hardcoded to 2 for 10x STAMP data; it is not inferred here.
     matrix_dir is carried as a keyed side-channel (joined by meta.id) so it is
@@ -13,14 +15,17 @@
 include { CELLRANGER          } from '../../../modules/local/cellranger/main'
 include { MARINE_SC           } from '../../../modules/local/marine_sc/main'
 include { FILTER_EDITS_SC     } from '../../../modules/local/filter_edits_sc/main'
+include { SITE_DEPTH_SC       } from '../../../modules/local/site_depth_sc/main'
+include { FILTER_SITE_FRAC_SC } from '../../../modules/local/filter_site_frac_sc/main'
 include { NORMALIZE_EDITS_SC  } from '../../../modules/local/normalize_edits_sc/main'
 
 workflow SC_MARINE {
 
     take:
     ch_input        // channel: items from samplesheet classification
-                    //   FASTQ-start: [ meta{mode:'sc',start:'fastq'}, fastq_dir ]
-                    //   BAM-start:   [ meta{mode:'sc',start:'bam'},   bam, matrix_dir ]
+                    //   FASTQ-start: [ meta{mode:'sc',start:'fastq'}, fastq_dir, barcodes ]
+                    //   BAM-start:   [ meta{mode:'sc',start:'bam'},   bam, matrix_dir, barcodes ]
+                    //   barcodes: optional F5 cell list, null when not given
     cellranger_ref  // path: pre-built CellRanger reference (FASTQ-start only)
     fasta           // path: reference FASTA (for samtools calmd in MARINE_SC)
     gene_bed        // path: BED6 gene model
@@ -37,9 +42,12 @@ workflow SC_MARINE {
         bam:   entry[0].start == 'bam'
     }.set { ch_by_start }
 
+    // Optional F5 barcode list, keyed by sample and stripped from the tuples below
+    def ch_user_barcodes = ch_input.map { entry -> [ entry[0].id, entry[-1] ] }
+
     // ── FASTQ START: CellRanger ───────────────────────────────────────────────
-    // ch_by_start.fastq: [ meta, fastq_dir ]
-    CELLRANGER(ch_by_start.fastq, cellranger_ref)
+    // ch_by_start.fastq: [ meta, fastq_dir, barcodes ]
+    CELLRANGER(ch_by_start.fastq.map { meta, fastq_dir, _bc -> [ meta, fastq_dir ] }, cellranger_ref)
     ch_versions      = ch_versions.mix(CELLRANGER.out.versions)
     ch_multiqc_files = ch_multiqc_files.mix(CELLRANGER.out.outs_dir.map { _m, d -> d })
 
@@ -49,9 +57,9 @@ workflow SC_MARINE {
         .map { meta, bam, bai, matrix_dir -> [ meta, bam, bai, matrix_dir ] }
 
     // ── BAM START: validate BAI exists ────────────────────────────────────────
-    // ch_by_start.bam: [ meta, bam, matrix_dir ] (3-element tuple from samplesheet)
+    // ch_by_start.bam: [ meta, bam, matrix_dir, barcodes ] (from samplesheet)
     def ch_bams_from_bam = ch_by_start.bam
-        .map { meta, bam, matrix_dir ->
+        .map { meta, bam, matrix_dir, _bc ->
             def bai = file("${bam}.bai")
             if (!bai.exists()) {
                 bai = file("${bam.toString().replace('.bam', '.bai')}")
@@ -82,9 +90,44 @@ workflow SC_MARINE {
     FILTER_EDITS_SC(MARINE_SC.out.results, dbsnp_bed)
     ch_versions = ch_versions.mix(FILTER_EDITS_SC.out.versions)
 
+    def ch_filtered = FILTER_EDITS_SC.out.filtered
+
+    // ── F5: per-site editing fraction against true depth (opt-in) ─────────────
+    if (params.filter_sc_site_max_frac) {
+        // Cells for the denominator: the samplesheet list if given, else the
+        // CellRanger barcodes MARINE was whitelisted with.
+        def ch_depth_input = ch_all_sc_bams
+            .map { meta, bam, bai, matrix_dir -> [ meta.id, meta, bam, bai, matrix_dir ] }
+            .join(ch_user_barcodes)
+            .map { id, meta, bam, bai, matrix_dir, user_bc ->
+                def bc = user_bc ?: [ 'barcodes.tsv.gz', 'barcodes.tsv' ]
+                    .collect { name -> file("${matrix_dir}/${name}") }
+                    .find { f -> f.exists() }
+                if (!bc) {
+                    error("Sample '${id}': no barcodes.tsv(.gz) in ${matrix_dir} and no 'barcodes' column given.")
+                }
+                [ id, meta, bam, bai, bc ]
+            }
+            .join(FILTER_EDITS_SC.out.sites.map { meta, sites -> [ meta.id, sites ] })
+            .map { _id, meta, bam, bai, bc, sites -> [ meta, bam, bai, bc, sites ] }
+
+        SITE_DEPTH_SC(ch_depth_input)
+        ch_versions = ch_versions.mix(SITE_DEPTH_SC.out.versions)
+
+        FILTER_SITE_FRAC_SC(
+            FILTER_EDITS_SC.out.filtered
+                .map { meta, filtered -> [ meta.id, meta, filtered ] }
+                .join(SITE_DEPTH_SC.out.depth.map { meta, depth, cells -> [ meta.id, depth, cells ] })
+                .map { _id, meta, filtered, depth, cells -> [ meta, filtered, depth, cells ] }
+        )
+        ch_versions = ch_versions.mix(FILTER_SITE_FRAC_SC.out.versions)
+
+        ch_filtered = FILTER_SITE_FRAC_SC.out.filtered
+    }
+
     // ── Normalize by per-cell UMI counts ─────────────────────────────────────
     // Join filtered edits with the matrix_dir channel keyed by meta.id
-    def ch_normalize_input = FILTER_EDITS_SC.out.filtered
+    def ch_normalize_input = ch_filtered
         .map { meta, filtered -> [ meta.id, meta, filtered ] }
         .join(ch_matrix_dirs)
         .map { _id, meta, filtered, matrix_dir -> [ meta, filtered, matrix_dir ] }

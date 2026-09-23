@@ -229,7 +229,7 @@
                 "max_frac": {
                     "type": "number",
                     "default": 0.1,
-                    "description": "Maximum editing fraction. Entries above this cutoff are filtered as likely SNPs or mismatches. In sc mode this is evaluated per (cell, site), so a germline variant is dropped even when dbSNP does not list it.",
+                    "description": "Bulk only. Maximum editing fraction per site; sites above it are filtered as likely SNPs or mismatches. The sc equivalent is --site_max_frac.",
                     "minimum": 0,
                     "maximum": 1,
                     "fa_icon": "fas fa-percentage"
@@ -237,7 +237,7 @@
                 "site_max_frac": {
                     "type": "number",
                     "default": 0.05,
-                    "description": "Maximum across-cell editing fraction per site, used by the opt-in sc Filter 6 (filter_sc_site_max_frac). Note MARINE reports coverage only for cells that carry an edit, so this fraction is biased low for deeply covered genes.",
+                    "description": "Maximum editing fraction per site for sc Filter 5 (filter_sc_site_max_frac): edited reads / samtools read depth, summed over the cells in the barcode list. Depth counts read-end bases that MARINE skips when min_dist_from_end > 0, and reads on both strands, so the fraction runs slightly low in those cases.",
                     "minimum": 0,
                     "maximum": 1,
                     "fa_icon": "fas fa-percentage"
@@ -269,7 +269,7 @@
                 "filter_sc_multi_conversion": {
                     "type": "boolean",
                     "default": true,
-                    "description": "SC F1: remove barcodes with more than one conversion type at the same site.",
+                    "description": "SC F1: remove sites showing more than one conversion type across all cells.",
                     "fa_icon": "fas fa-times-circle"
                 },
                 "filter_sc_dbsnp": {
@@ -284,23 +284,23 @@
                     "description": "SC F3: remove sites with fewer than --min_count total edited reads across all cells.",
                     "fa_icon": "fas fa-times-circle"
                 },
-                "filter_sc_max_frac": {
-                    "type": "boolean",
-                    "default": true,
-                    "description": "SC F4: remove (cell, site) entries where that cell's edit_fraction exceeds --max_frac.",
-                    "fa_icon": "fas fa-times-circle"
-                },
                 "filter_sc_unannotated": {
                     "type": "boolean",
                     "default": true,
-                    "description": "SC F5: remove sites with no gene annotation (feature_type == -1).",
+                    "description": "SC F4: remove sites with no gene annotation (feature_type == -1).",
                     "fa_icon": "fas fa-times-circle"
                 },
                 "filter_sc_site_max_frac": {
                     "type": "boolean",
                     "default": false,
-                    "description": "SC F6 (opt-in): remove sites whose across-cell edit fraction exceeds --site_max_frac. Off by default -- on rep1 chr19 it retained only 7 genes and halved C>T purity, because MARINE reports coverage only for edited cells.",
+                    "description": "SC F5 (opt-in): remove sites where more than --site_max_frac of reads are edited, with depth measured by samtools over the sc BAM across all cells in the sample's barcode list (samplesheet 'barcodes' column, else the CellRanger barcodes). Adds one pass over each BAM.",
                     "fa_icon": "fas fa-flask"
+                },
+                "filter_sc_recount_min_count": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "With F5 on: re-apply --min_count counting only edited reads from cells in the barcode list. F3 counts all CellRanger cells, so a site can pass it on reads from cells outside the list. No effect without a 'barcodes' column.",
+                    "fa_icon": "fas fa-redo"
                 }
             }
         },

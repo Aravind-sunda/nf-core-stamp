@@ -204,13 +204,19 @@ Edits pass through four filters, each individually switchable: multiallelic site
 <summary>Output files</summary>
 
 - `03_filter_sc/<sample>/`
-  - `filtered_edits.tsv`: Edit sites surviving all enabled filters.
+  - `filtered_edits.tsv`: Edit sites surviving filters 1–4.
+  - `sites.bed`: The surviving sites, input to the depth step.
+  - With `--filter_sc_site_max_frac` only:
+    - `site_depth.tsv`: samtools read depth at each site across the barcode list's cells.
+    - `site_frac.tsv`: Per site: edited reads, depth, fraction and which checks it passed.
+    - `site_frac_summary.tsv`: Sites, edit entries and C>T site purity at each step of filter 5.
+    - `filtered_edits_site_frac.tsv`: Edits surviving filter 5; this is what gets normalised.
 - `04_normalize_sc/<sample>/`
   - `normalized_edits.tsv`: Edit counts normalised to per-cell UMI totals. **This is the primary single-cell result.**
 
 </details>
 
-Five filters apply here, each switchable: multiple conversion types per barcode (`--filter_sc_multi_conversion`), dbSNP overlap (`--filter_sc_dbsnp`), fewer than `--min_count` edited reads (`--filter_sc_min_count`), editing fraction above `--max_frac` (`--filter_sc_max_frac`), and unannotated sites (`--filter_sc_unannotated`).
+Four filters apply here, each switchable: multiple conversion types per site (`--filter_sc_multi_conversion`), dbSNP overlap (`--filter_sc_dbsnp`), fewer than `--min_count` edited reads (`--filter_sc_min_count`), and unannotated sites (`--filter_sc_unannotated`). A fifth, opt-in filter (`--filter_sc_site_max_frac`) drops sites where more than `--site_max_frac` of reads are edited, with depth measured by `samtools depth` over the BAM across all cells in the sample's barcode list. When a barcode list is given, `--min_count` is re-applied within those cells first (`--filter_sc_recount_min_count`).
 
 ### MultiQC
 

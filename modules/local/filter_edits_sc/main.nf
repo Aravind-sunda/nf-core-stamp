@@ -1,6 +1,5 @@
-// Filters MARINE SC edit calls against dbSNP and applies minimum coverage /
-// maximum editing-fraction thresholds. Also removes multi-conversion sites
-// and unannotated entries (feature_type == -1).
+// Filters MARINE SC edit calls: multi-conversion sites, dbSNP overlap, minimum
+// edited reads per site, and unannotated entries (feature_type == -1).
 // SC mode always uses the annotated MARINE output (strandedness is fixed at 2).
 process FILTER_EDITS_SC {
     tag "${meta.id}"
@@ -16,6 +15,7 @@ process FILTER_EDITS_SC {
 
     output:
     tuple val(meta), path("filtered_edits.tsv"), emit: filtered
+    tuple val(meta), path("sites.bed"),          emit: sites
     tuple val(meta), path("filter_summary.tsv"), emit: summary,  optional: true
     // piecharts.png and edit_fraction_histograms.png, written to the output root
     // rather than a plots/ subdir as in the bulk script. Optional because this
@@ -29,18 +29,13 @@ process FILTER_EDITS_SC {
         params.filter_sc_multi_conversion ? "" : "--no-filter-multi-conversion",
         params.filter_sc_dbsnp            ? "" : "--no-filter-dbsnp",
         params.filter_sc_min_count        ? "" : "--no-filter-min-count",
-        params.filter_sc_max_frac         ? "" : "--no-filter-max-frac",
         params.filter_sc_unannotated      ? "" : "--no-filter-unannotated",
-        // Filter 6 is opt-in, so this flag enables rather than skips.
-        params.filter_sc_site_max_frac    ? "--filter-site-max-frac" : "",
     ].findAll { it }.join(" ")
     """
     helper_filter_edits_sc.py \\
         --marine-results ${marine_dir}/final_filtered_site_info_annotated.tsv \\
         --dbsnp-bed      ${dbsnp_bed} \\
         --min-count      ${params.min_count} \\
-        --max-frac       ${params.max_frac} \\
-        --site-max-frac  ${params.site_max_frac} \\
         ${skip_flags} \\
         --output-dir     .
 

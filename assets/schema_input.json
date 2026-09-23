@@ -40,6 +40,11 @@
             "matrix_dir": {
                 "type": "string",
                 "errorMessage": "matrix_dir: path to CellRanger filtered_feature_bc_matrix directory."
+            },
+            "barcodes": {
+                "type": "string",
+                "pattern": "^\\S+$",
+                "errorMessage": "barcodes: optional path to a one-barcode-per-line file (plain or .gz) restricting the cells used by the sc site editing-fraction filter (F5)."
             }
         },
         "required": ["sample"]
