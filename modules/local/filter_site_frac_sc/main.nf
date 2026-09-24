@@ -6,7 +6,7 @@ process FILTER_SITE_FRAC_SC {
     publishDir { "${params.outdir}/03_filter_sc/${meta.id}" }, mode: params.publish_dir_mode,
         saveAs: { filename -> filename.equals('versions.yml') ? null : filename }
 
-    conda 'conda-forge::python>=3.8 conda-forge::pandas>=2.0'
+    conda 'conda-forge::python>=3.8 conda-forge::pandas>=2.0 conda-forge::matplotlib-base>=3.7'
     container { params.ribostamp_utils_sif as String ?: 'docker.io/aravindsundaravadivelu/ribostamp_utils:1.0.0' }
 
     input:
@@ -16,6 +16,7 @@ process FILTER_SITE_FRAC_SC {
     tuple val(meta), path("filtered_edits_site_frac.tsv"), emit: filtered
     tuple val(meta), path("site_frac.tsv"),                emit: sites
     tuple val(meta), path("site_frac_summary.tsv"),        emit: summary
+    tuple val(meta), path("site_frac_*.png"),              emit: plots
     path "versions.yml",                                   emit: versions
 
     script:
@@ -27,6 +28,7 @@ process FILTER_SITE_FRAC_SC {
         --site-max-frac  ${params.site_max_frac} \\
         --min-count      ${params.min_count} \\
         ${params.filter_sc_recount_min_count ? '' : '--no-recount-min-count'} \\
+        --sample         ${meta.id} \\
         --output-dir     .
 
     cat <<-END_VERSIONS > versions.yml

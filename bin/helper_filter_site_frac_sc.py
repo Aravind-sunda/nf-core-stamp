@@ -30,7 +30,44 @@ Inputs
 import argparse
 import os
 
+import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
+
+
+def _pie_grid(steps, title, output_path):
+    """One pie of conversion types per step, counted by distinct site (the paper's C>T purity)."""
+    fig, axes = plt.subplots(1, len(steps), figsize=(6 * len(steps), 5))
+    for ax, (label, d) in zip(axes, steps):
+        counts = d["strand_conversion"].value_counts()
+        small = counts / counts.sum() < 0.02     # unreadable as separate slices
+        if small.sum() > 1:
+            counts = pd.concat([counts[~small], pd.Series({"other": counts[small].sum()})])
+        ax.pie(counts, labels=counts.index, autopct="%1.1f%%", startangle=90)
+        ax.set_title(f"{label}\n({len(d):,} sites)", fontsize=10)
+    fig.suptitle(title, fontsize=13, y=1.02)
+    plt.tight_layout()
+    plt.savefig(output_path, bbox_inches="tight", dpi=150)
+    plt.close()
+
+
+def _hist_grid(steps, max_frac, output_path):
+    """Per-site edited fraction (edited reads / depth), 0 to 1, with the F5 cutoff marked."""
+    fig, axes = plt.subplots(1, len(steps), figsize=(6 * len(steps), 5))
+    for ax, (label, d) in zip(axes, steps):
+        finite = d["site_frac"][np.isfinite(d["site_frac"])]
+        ax.hist(finite.clip(upper=1), bins=50, range=(0, 1), color="skyblue", edgecolor="black")
+        ax.axvline(max_frac, color="crimson", linestyle="--", label=f"cutoff {max_frac}")
+        ax.set_yscale("log")
+        n_zero = len(d) - len(finite)
+        ax.set_title(f"{label}\n({len(d):,} sites"
+                     f"{f'; {n_zero:,} with depth 0 not shown' if n_zero else ''})", fontsize=10)
+        ax.set_xlabel("Site editing fraction (edited reads / depth)")
+        ax.set_ylabel("Sites (log scale)")
+        ax.legend()
+    plt.tight_layout()
+    plt.savefig(output_path, bbox_inches="tight", dpi=150)
+    plt.close()
 
 
 def main():
@@ -44,6 +81,7 @@ def main():
     parser.add_argument("--site-max-frac",  type=float, default=0.05)
     parser.add_argument("--min-count",      type=int,   default=3)
     parser.add_argument("--no-recount-min-count", action="store_true", default=False)
+    parser.add_argument("--sample", default="", help="Sample name for plot titles")
     parser.add_argument("--output-dir", "-o", default=".")
     args = parser.parse_args()
 
@@ -106,6 +144,17 @@ def main():
     sites.to_csv(os.path.join(args.output_dir, "site_frac.tsv"), sep="\t", index=False)
     summary.to_csv(os.path.join(args.output_dir, "site_frac_summary.tsv"), sep="\t", index=False)
     out.to_csv(os.path.join(args.output_dir, "filtered_edits_site_frac.tsv"), sep="\t", index=False)
+
+    # Named site_frac_* so they do not overwrite helper_filter_edits_sc.py's plots,
+    # which publish to the same directory.
+    frac_steps = [("Restricted to barcodes", sites),
+                  (f"After {recount_label}", counted),
+                  (f"After F5 (site frac > {args.site_max_frac})", keep)]
+    _pie_grid([("F1–F4 input", sites_raw)] + frac_steps,
+              f"Conversion types by site at each F5 step{f' ({args.sample})' if args.sample else ''}",
+              os.path.join(args.output_dir, "site_frac_piecharts.png"))
+    _hist_grid(frac_steps, args.site_max_frac,
+               os.path.join(args.output_dir, "site_frac_histograms.png"))
 
 
 if __name__ == "__main__":

@@ -211,6 +211,7 @@ Edits pass through four filters, each individually switchable: multiallelic site
     - `site_frac.tsv`: Per site: edited reads, depth, fraction and which checks it passed.
     - `site_frac_summary.tsv`: Sites, edit entries and C>T site purity at each step of filter 5.
     - `filtered_edits_site_frac.tsv`: Edits surviving filter 5; this is what gets normalised.
+    - `site_frac_piecharts.png`, `site_frac_histograms.png`: Conversion types by site, and the per-site editing fraction (0–1, cutoff marked), at each step of filter 5.
 - `04_normalize_sc/<sample>/`
   - `normalized_edits.tsv`: Edit counts normalised to per-cell UMI totals. **This is the primary single-cell result.**
 
