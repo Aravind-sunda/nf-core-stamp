@@ -131,7 +131,7 @@ def _pie_grid(steps, title, output_path):
     for ax, (label, d) in zip(axes_flat, steps):
         counts = d["strand_conversion"].value_counts()
         ax.pie(counts, labels=counts.index, autopct="%1.1f%%", startangle=90)
-        ax.set_title(f"{label}\n({len(d):,} edits)", fontsize=10)
+        ax.set_title(f"{label}\n({len(d):,} edit rows)", fontsize=10)
 
     for ax in axes_flat[n:]:
         ax.set_visible(False)
@@ -298,7 +298,8 @@ def main():
 
     # add sample name to the title of the pie charts
     sample_name = os.path.basename(os.path.dirname(args.marine_results))
-    _pie_grid(steps, f"Strand-conversion distribution at each filtering step ({sample_name})", pie_path)
+    _pie_grid(steps, f"Strand-conversion distribution by edit row (one per cell per site) "
+                     f"at each filtering step ({sample_name})", pie_path)
     _hist_grid(steps, hist_path)
 
     print("\nDone.")

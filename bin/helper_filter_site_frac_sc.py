@@ -44,7 +44,7 @@ def _pie_grid(steps, title, output_path):
         if small.sum() > 1:
             counts = pd.concat([counts[~small], pd.Series({"other": counts[small].sum()})])
         ax.pie(counts, labels=counts.index, autopct="%1.1f%%", startangle=90)
-        ax.set_title(f"{label}\n({len(d):,} sites)", fontsize=10)
+        ax.set_title(f"{label}\n({len(d):,} unique edit sites)", fontsize=10)
     fig.suptitle(title, fontsize=13, y=1.02)
     plt.tight_layout()
     plt.savefig(output_path, bbox_inches="tight", dpi=150)
@@ -151,7 +151,7 @@ def main():
                   (f"After {recount_label}", counted),
                   (f"After F5 (site frac > {args.site_max_frac})", keep)]
     _pie_grid([("F1–F4 input", sites_raw)] + frac_steps,
-              f"Conversion types by site at each F5 step{f' ({args.sample})' if args.sample else ''}",
+              f"Conversion types by unique edit site at each F5 step{f' ({args.sample})' if args.sample else ''}",
               os.path.join(args.output_dir, "site_frac_piecharts.png"))
     _hist_grid(frac_steps, args.site_max_frac,
                os.path.join(args.output_dir, "site_frac_histograms.png"))
