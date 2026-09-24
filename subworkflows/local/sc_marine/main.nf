@@ -1,10 +1,11 @@
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     SC MARINE SUBWORKFLOW
-    Steps (FASTQ-start): CellRanger → MARINE_SC → FILTER_EDITS_SC → NORMALIZE_EDITS_SC
-    Steps (BAM-start):              → MARINE_SC → FILTER_EDITS_SC → NORMALIZE_EDITS_SC
-    With filter_sc_site_max_frac, SITE_DEPTH_SC → FILTER_SITE_FRAC_SC (F5) run
-    between FILTER_EDITS_SC and NORMALIZE_EDITS_SC.
+    Steps (FASTQ-start): CellRanger → MARINE_SC → FILTER_EDITS_SC → FILTER_SITE_FRAC_SC → NORMALIZE_EDITS_SC
+    Steps (BAM-start):              → MARINE_SC → FILTER_EDITS_SC → FILTER_SITE_FRAC_SC → NORMALIZE_EDITS_SC
+    FILTER_SITE_FRAC_SC always runs and draws the F1–F5 plots. With
+    filter_sc_site_max_frac it also applies F5 (after SITE_DEPTH_SC) and its output
+    is normalized; otherwise it only plots and FILTER_EDITS_SC's output is normalized.
 
     Strandedness is hardcoded to 2 for 10x STAMP data; it is not inferred here.
     matrix_dir is carried as a keyed side-channel (joined by meta.id) so it is
@@ -90,9 +91,15 @@ workflow SC_MARINE {
     FILTER_EDITS_SC(MARINE_SC.out.results, dbsnp_bed)
     ch_versions = ch_versions.mix(FILTER_EDITS_SC.out.versions)
 
-    def ch_filtered = FILTER_EDITS_SC.out.filtered
+    // [ id, meta, filtered_edits, step_stats ]
+    def ch_filter_out = FILTER_EDITS_SC.out.filtered
+        .map { meta, filtered -> [ meta.id, meta, filtered ] }
+        .join(FILTER_EDITS_SC.out.stats.map { meta, stats -> [ meta.id, stats ] })
 
     // ── F5: per-site editing fraction against true depth (opt-in) ─────────────
+    // FILTER_SITE_FRAC_SC always runs because it draws the F1–F5 plots; without
+    // depth ([] inputs) it only plots, and the F1–F4 edits go on to normalize.
+    def ch_f5_input
     if (params.filter_sc_site_max_frac) {
         // Cells for the denominator: the samplesheet list if given, else the
         // CellRanger barcodes MARINE was whitelisted with.
@@ -114,16 +121,20 @@ workflow SC_MARINE {
         SITE_DEPTH_SC(ch_depth_input)
         ch_versions = ch_versions.mix(SITE_DEPTH_SC.out.versions)
 
-        FILTER_SITE_FRAC_SC(
-            FILTER_EDITS_SC.out.filtered
-                .map { meta, filtered -> [ meta.id, meta, filtered ] }
-                .join(SITE_DEPTH_SC.out.depth.map { meta, depth, cells -> [ meta.id, depth, cells ] })
-                .map { _id, meta, filtered, depth, cells -> [ meta, filtered, depth, cells ] }
-        )
-        ch_versions = ch_versions.mix(FILTER_SITE_FRAC_SC.out.versions)
-
-        ch_filtered = FILTER_SITE_FRAC_SC.out.filtered
+        ch_f5_input = ch_filter_out
+            .join(SITE_DEPTH_SC.out.depth.map { meta, depth, cells -> [ meta.id, depth, cells ] })
+            .map { _id, meta, filtered, stats, depth, cells -> [ meta, filtered, stats, depth, cells ] }
+    } else {
+        ch_f5_input = ch_filter_out
+            .map { _id, meta, filtered, stats -> [ meta, filtered, stats, [], [] ] }
     }
+
+    FILTER_SITE_FRAC_SC(ch_f5_input)
+    ch_versions = ch_versions.mix(FILTER_SITE_FRAC_SC.out.versions)
+
+    def ch_filtered = params.filter_sc_site_max_frac
+        ? FILTER_SITE_FRAC_SC.out.filtered
+        : FILTER_EDITS_SC.out.filtered
 
     // ── Normalize by per-cell UMI counts ─────────────────────────────────────
     // Join filtered edits with the matrix_dir channel keyed by meta.id

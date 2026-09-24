@@ -206,12 +206,16 @@ Edits pass through four filters, each individually switchable: multiallelic site
 - `03_filter_sc/<sample>/`
   - `filtered_edits.tsv`: Edit sites surviving filters 1–4.
   - `sites.bed`: The surviving sites, input to the depth step.
+  - `piecharts_unique_sites.png`, `piecharts_edit_rows.png`: Conversion types at every filter step (raw through filter 5), counted by unique edit site and by edit row (one per cell per site).
+  - `histograms_cell_fraction.png`: Each cell's editing fraction at a site (0–1) at every filter step.
+  - `filter_step_stats_f1_f4.tsv`: The counts behind the plots for filters 1–4 (unique sites and edit rows per conversion type).
   - With `--filter_sc_site_max_frac` only:
     - `site_depth.tsv`: samtools read depth at each site across the barcode list's cells.
     - `site_frac.tsv`: Per site: edited reads, depth, fraction and which checks it passed.
     - `site_frac_summary.tsv`: Sites, edit entries and C>T site purity at each step of filter 5.
     - `filtered_edits_site_frac.tsv`: Edits surviving filter 5; this is what gets normalised.
-    - `site_frac_piecharts.png`, `site_frac_histograms.png`: Conversion types by site, and the per-site editing fraction (0–1, cutoff marked), at each step of filter 5.
+    - `filter_step_stats.tsv`: The plot counts for filters 1–5.
+    - `histograms_site_fraction.png`: Each site's editing fraction (edited reads / depth, 0–1, cutoff marked) at each step of filter 5.
 - `04_normalize_sc/<sample>/`
   - `normalized_edits.tsv`: Edit counts normalised to per-cell UMI totals. **This is the primary single-cell result.**
 

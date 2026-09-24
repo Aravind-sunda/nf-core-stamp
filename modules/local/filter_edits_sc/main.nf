@@ -17,10 +17,8 @@ process FILTER_EDITS_SC {
     tuple val(meta), path("filtered_edits.tsv"), emit: filtered
     tuple val(meta), path("sites.bed"),          emit: sites
     tuple val(meta), path("filter_summary.tsv"), emit: summary,  optional: true
-    // piecharts.png and edit_fraction_histograms.png, written to the output root
-    // rather than a plots/ subdir as in the bulk script. Optional because this
-    // script has no zero-edit short-circuit, so plotting can be skipped.
-    tuple val(meta), path("*.png"),              emit: plots,    optional: true
+    // Per-step counts; FILTER_SITE_FRAC_SC draws the plots from them.
+    tuple val(meta), path("filter_step_stats_f1_f4.tsv"), emit: stats
     path "versions.yml",                          emit: versions
 
     script:

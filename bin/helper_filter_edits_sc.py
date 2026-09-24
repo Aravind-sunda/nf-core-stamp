@@ -10,7 +10,7 @@ Required inputs
 Optional inputs
 ---------------
 --min-count        Minimum total edited reads per site across all cells (default: 3)
---output-dir / -o  If given, all TSV outputs and images are written to this directory
+--output-dir / -o  If given, all TSV outputs are written to this directory
 
 There is no editing-fraction filter here. A per-cell fraction is meaningless at
 1-3 reads per cell per site (one real edit reads as 0.33-1.0), and a per-site
@@ -28,13 +28,14 @@ python filter_edits.py \\
 """
 
 import argparse
-import math
 import os
 import sys
 
 import pandas as pd
-import matplotlib.pyplot as plt
 import pybedtools
+
+# Same directory (bin/); shared so F1–F4 and F5 count their steps identically.
+from helper_filter_site_frac_sc import step_stats
 
 
 # ---------------------------------------------------------------------------
@@ -116,68 +117,6 @@ def filter_unannotated(df):
 
 
 # ---------------------------------------------------------------------------
-# Plotting helpers
-# ---------------------------------------------------------------------------
-
-def _pie_grid(steps, title, output_path):
-    """Render one pie chart per (label, DataFrame) pair in *steps* as a grid image."""
-    n = len(steps)
-    ncols = min(n, 3)
-    nrows = math.ceil(n / ncols)
-
-    fig, axes = plt.subplots(nrows, ncols, figsize=(6 * ncols, 5 * nrows))
-    axes_flat = axes.flatten() if n > 1 else [axes]
-
-    for ax, (label, d) in zip(axes_flat, steps):
-        counts = d["strand_conversion"].value_counts()
-        ax.pie(counts, labels=counts.index, autopct="%1.1f%%", startangle=90)
-        ax.set_title(f"{label}\n({len(d):,} edit rows)", fontsize=10)
-
-    for ax in axes_flat[n:]:
-        ax.set_visible(False)
-
-    fig.suptitle(title, fontsize=13, y=1.01)
-    plt.tight_layout()
-
-    if output_path:
-        plt.savefig(output_path, bbox_inches="tight", dpi=150)
-        print(f"  Saved: {output_path}")
-    else:
-        plt.show()
-    plt.close()
-
-
-def _hist_grid(steps, output_path):
-    """Render editing-fraction histograms for every step after 'Raw input'."""
-    plot_steps = [(lbl, d) for lbl, d in steps if lbl != "Raw input"]
-    n = len(plot_steps)
-    ncols = min(n, 2)
-    nrows = math.ceil(n / ncols)
-
-    fig, axes = plt.subplots(nrows, ncols, figsize=(6 * ncols, 5 * nrows))
-    axes_flat = axes.flatten() if n > 1 else [axes]
-
-    for ax, (label, d) in zip(axes_flat, plot_steps):
-        ax.hist(d["edit_fraction"], bins=50, range=(0, 0.2),
-                color="skyblue", edgecolor="black")
-        ax.set_title(label, fontsize=10)
-        ax.set_xlabel("Editing Fraction")
-        ax.set_ylabel("Frequency")
-
-    for ax in axes_flat[n:]:
-        ax.set_visible(False)
-
-    plt.tight_layout()
-
-    if output_path:
-        plt.savefig(output_path, bbox_inches="tight", dpi=150)
-        print(f"  Saved: {output_path}")
-    else:
-        plt.show()
-    plt.close()
-
-
-# ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
 
@@ -193,7 +132,7 @@ def main():
     parser.add_argument("--min-count", type=int, default=3,
                         help="Min total edited reads per site (Filter 3)")
     parser.add_argument("--output-dir", "-o", default=None,
-                        help="Directory to save all outputs (TSVs + images)")
+                        help="Directory to save all outputs")
     # ── Per-filter on/off controls (set flag to skip that filter entirely) ────
     parser.add_argument("--no-filter-multi-conversion", action="store_true", default=False,
                         help="Skip Filter 1 — sites showing multiple conversion types")
@@ -290,17 +229,12 @@ def main():
             bed_path, sep="\t", header=False, index=False)
         print(f"Saved {len(sites):,} surviving sites → {bed_path}")
 
-    # ---- Plots --------------------------------------------------------------
-    print("\nGenerating plots ...")
-
-    pie_path  = os.path.join(args.output_dir, "piecharts.png")  if args.output_dir else None
-    hist_path = os.path.join(args.output_dir, "edit_fraction_histograms.png") if args.output_dir else None
-
-    # add sample name to the title of the pie charts
-    sample_name = os.path.basename(os.path.dirname(args.marine_results))
-    _pie_grid(steps, f"Strand-conversion distribution by edit row (one per cell per site) "
-                     f"at each filtering step ({sample_name})", pie_path)
-    _hist_grid(steps, hist_path)
+        # Plots are drawn by helper_filter_site_frac_sc.py (FILTER_SITE_FRAC_SC),
+        # which runs whether or not F5 is on, so F1–F5 share one set of figures.
+        # These per-step counts are all it needs from here.
+        stats_path = os.path.join(args.output_dir, "filter_step_stats_f1_f4.tsv")
+        step_stats(steps).to_csv(stats_path, sep="\t", index=False)
+        print(f"Saved per-step counts for plotting → {stats_path}")
 
     print("\nDone.")
 
