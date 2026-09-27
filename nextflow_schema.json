@@ -114,8 +114,8 @@
                     "type": "string",
                     "format": "file-path",
                     "exists": true,
-                    "pattern": "^\\S+\\.bed(\\.gz)?$",
-                    "description": "BED6 gene-model file. Used by RSeQC infer_experiment.py for strandedness inference and by MARINE for edit-site annotation.",
+                    "pattern": "^\\S+\\.bed6?(\\.gz)?$",
+                    "description": "BED6 gene-model file (.bed or .bed6, optionally gzipped).Used by RSeQC infer_experiment.py for strandedness inference and by MARINE for edit-site annotation.",
                     "fa_icon": "fas fa-file-alt"
                 },
                 "dbsnp_bed": {
