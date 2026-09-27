@@ -74,16 +74,20 @@ DOX_REP1,dox_rep1.sorted.bam,SE
 Single-cell, FASTQ start (Cell Ranger runs):
 
 ```csv title="samplesheet_sc_fastq.csv"
-sample,fastq_dir
-STAMP_10X_1,/data/fastqs/STAMP_10X_1/
+sample,fastq_dir,barcodes
+STAMP_10X_1,/data/fastqs/STAMP_10X_1/,/data/qc/STAMP_10X_1_qc_barcodes.tsv.gz
+STAMP_10X_2,/data/fastqs/STAMP_10X_2/,
 ```
 
 Single-cell, BAM start (Cell Ranger already run):
 
 ```csv title="samplesheet_sc_bam.csv"
-sample,bam,matrix_dir
-STAMP_10X_1,/data/cr/STAMP_10X_1/outs/possorted_genome_bam.bam,/data/cr/STAMP_10X_1/outs/filtered_feature_bc_matrix
+sample,bam,matrix_dir,barcodes
+STAMP_10X_1,/data/cr/STAMP_10X_1/outs/possorted_genome_bam.bam,/data/cr/STAMP_10X_1/outs/filtered_feature_bc_matrix,/data/qc/STAMP_10X_1_qc_barcodes.tsv.gz
+STAMP_10X_2,/data/cr/STAMP_10X_2/outs/possorted_genome_bam.bam,/data/cr/STAMP_10X_2/outs/filtered_feature_bc_matrix,
 ```
+
+`barcodes` is optional per row; leave it empty to use all Cell Ranger cells.
 
 Example samplesheets are bundled under [`assets/samplesheets/`](../assets/samplesheets/).
 
