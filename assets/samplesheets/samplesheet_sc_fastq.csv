@@ -1,3 +1,3 @@
-sample,fastq_dir
-STAMP_10X_1,/data/fastqs/STAMP_10X_1/
-STAMP_10X_2,/data/fastqs/STAMP_10X_2/
+sample,fastq_dir,barcodes
+STAMP_10X_1,/data/fastqs/STAMP_10X_1/,/data/qc/STAMP_10X_1_qc_barcodes.tsv.gz
+STAMP_10X_2,/data/fastqs/STAMP_10X_2/,

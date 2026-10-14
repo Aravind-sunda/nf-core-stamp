@@ -105,13 +105,13 @@ workflow PIPELINE_INITIALISATION {
 
     //
     // Create channel from input samplesheet
-    // Columns (in schema order): sample(meta), fastq_1, fastq_2, bam, library_type, fastq_dir, matrix_dir
+    // Columns (in schema order): sample(meta), fastq_1, fastq_2, bam, library_type, fastq_dir, matrix_dir, barcodes
     // Mode detection uses ALL columns — any unexpected combination raises an explicit error.
     //
     channel
         .fromList(samplesheetToList(input, "${projectDir}/assets/schema_input.json"))
-        .map { meta, fastq_1, fastq_2, bam, library_type, fastq_dir, matrix_dir ->
-            classifyAndValidateRow(meta, fastq_1, fastq_2, bam, library_type, fastq_dir, matrix_dir)
+        .map { meta, fastq_1, fastq_2, bam, library_type, fastq_dir, matrix_dir, barcodes ->
+            classifyAndValidateRow(meta, fastq_1, fastq_2, bam, library_type, fastq_dir, matrix_dir, barcodes)
         }
         .set { ch_samplesheet }
 
@@ -245,8 +245,7 @@ def validateInputParameters() {
         }
         if (!params.dbsnp_bed) {
             error("--mode sc requires --dbsnp_bed (dbSNP BED file).")
-        }
-    }
+        }    }
 }
 
 //
@@ -254,8 +253,10 @@ def validateInputParameters() {
 // Returns a tuple whose structure depends on the detected mode:
 //   bulk + FASTQ  : [ meta, reads ]         reads = [ fastq_1 ] or [ fastq_1, fastq_2 ]
 //   bulk + BAM    : [ meta, bam ]
-//   sc   + FASTQ  : [ meta, fastq_dir ]
-//   sc   + BAM    : [ meta, bam, matrix_dir ]
+//   sc   + FASTQ  : [ meta, fastq_dir, barcodes ]
+//   sc   + BAM    : [ meta, bam, matrix_dir, barcodes ]
+//   barcodes is null unless the optional column is filled. It rides in the tuple
+//   rather than meta so that filling it does not invalidate cached MARINE_SC tasks.
 //
 // meta always contains:
 //   id         : sample name
@@ -273,7 +274,7 @@ def resolveFromSamplesheet(String p) {
     return file(base.resolve(p))
 }
 
-def classifyAndValidateRow(meta, fastq_1, fastq_2, bam, library_type, fastq_dir, matrix_dir) {
+def classifyAndValidateRow(meta, fastq_1, fastq_2, bam, library_type, fastq_dir, matrix_dir, barcodes) {
     def sample   = meta.id
     def mode     = params.mode
 
@@ -284,6 +285,21 @@ def classifyAndValidateRow(meta, fastq_1, fastq_2, bam, library_type, fastq_dir,
     def has_lib        = library_type ? true : false
     def has_fastq_dir  = fastq_dir   ? true : false
     def has_matrix_dir = matrix_dir  ? true : false
+    def has_barcodes   = barcodes    ? true : false
+
+    if (mode == 'bulk' && has_barcodes) {
+        error("Sample '${sample}' [bulk]: 'barcodes' is a single-cell column and must be absent.")
+    }
+    // Checked here rather than left to staging: SITE_DEPTH_SC runs after MARINE_SC,
+    // so a bad path would otherwise surface only after hours of edit calling.
+    def barcodes_file = has_barcodes ? resolveFromSamplesheet(barcodes) : null
+    if (barcodes_file && !barcodes_file.exists()) {
+        error("Sample '${sample}' [sc]: barcodes file not found: ${barcodes_file}")
+    }
+    if (barcodes_file && !params.filter_sc_site_max_frac) {
+        log.warn("Sample '${sample}': 'barcodes' is only used by the site editing-fraction filter, " +
+                 "which is off (filter_sc_site_max_frac = false); it will be ignored.")
+    }
 
     if (mode == 'bulk') {
 
@@ -371,7 +387,7 @@ def classifyAndValidateRow(meta, fastq_1, fastq_2, bam, library_type, fastq_dir,
             }
 
             def new_meta = meta + [ mode: 'sc', start: 'fastq', single_end: null ]
-            return [ new_meta, resolveFromSamplesheet(fastq_dir) ]
+            return [ new_meta, resolveFromSamplesheet(fastq_dir), barcodes_file ]
         }
 
         // ── sc BAM mode ────────────────────────────────────────────────────────
@@ -390,7 +406,7 @@ def classifyAndValidateRow(meta, fastq_1, fastq_2, bam, library_type, fastq_dir,
             }
 
             def new_meta = meta + [ mode: 'sc', start: 'bam', single_end: null ]
-            return [ new_meta, resolveFromSamplesheet(bam), resolveFromSamplesheet(matrix_dir) ]
+            return [ new_meta, resolveFromSamplesheet(bam), resolveFromSamplesheet(matrix_dir), barcodes_file ]
         }
 
         else {

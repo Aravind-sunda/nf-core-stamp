@@ -34,8 +34,8 @@ Each row must match exactly one of the four combinations below. Any other combin
 
 | Mode   | Start point | Required columns                        | Must be absent                        |
 | ------ | ----------- | --------------------------------------- | ------------------------------------- |
-| `bulk` | FASTQ       | `sample`, `fastq_1`, `library_type`      | `bam`, `fastq_dir`, `matrix_dir`      |
-| `bulk` | BAM         | `sample`, `bam`, `library_type`           | `fastq_1`, `fastq_2`, `fastq_dir`, `matrix_dir` |
+| `bulk` | FASTQ       | `sample`, `fastq_1`, `library_type`      | `bam`, `fastq_dir`, `matrix_dir`, `barcodes` |
+| `bulk` | BAM         | `sample`, `bam`, `library_type`           | `fastq_1`, `fastq_2`, `fastq_dir`, `matrix_dir`, `barcodes` |
 | `sc`   | FASTQ       | `sample`, `fastq_dir`                    | `bam`, `fastq_1`, `fastq_2`, `library_type`, `matrix_dir` |
 | `sc`   | BAM         | `sample`, `bam`, `matrix_dir`             | `fastq_1`, `fastq_2`, `library_type`, `fastq_dir` |
 
@@ -50,6 +50,7 @@ For bulk FASTQ, `fastq_2` is required when `library_type` is `PE` and must be ab
 | `library_type` | `SE` or `PE`. Bulk only.                                                                                                          |
 | `fastq_dir`    | Directory of 10x FASTQs following the `SAMPLE_S1_L001_R1_001.fastq.gz` convention. Single-cell FASTQ start only.                    |
 | `matrix_dir`   | Path to a Cell Ranger `filtered_feature_bc_matrix` directory. Single-cell BAM start only; Cell Ranger generates it on FASTQ start. |
+| `barcodes`     | Optional, single-cell only. One barcode per line (plain or `.gz`, same format as the BAM's `CB` tag, e.g. `AAACCAAAGCAGGTTC-1`). Restricts the cells used by the site editing-fraction filter (`--filter_sc_site_max_frac`), both for edited reads and read depth. Empty: all Cell Ranger cells. Ignored when that filter is off. |
 
 ### Examples
 
@@ -73,16 +74,20 @@ DOX_REP1,dox_rep1.sorted.bam,SE
 Single-cell, FASTQ start (Cell Ranger runs):
 
 ```csv title="samplesheet_sc_fastq.csv"
-sample,fastq_dir
-STAMP_10X_1,/data/fastqs/STAMP_10X_1/
+sample,fastq_dir,barcodes
+STAMP_10X_1,/data/fastqs/STAMP_10X_1/,/data/qc/STAMP_10X_1_qc_barcodes.tsv.gz
+STAMP_10X_2,/data/fastqs/STAMP_10X_2/,
 ```
 
 Single-cell, BAM start (Cell Ranger already run):
 
 ```csv title="samplesheet_sc_bam.csv"
-sample,bam,matrix_dir
-STAMP_10X_1,/data/cr/STAMP_10X_1/outs/possorted_genome_bam.bam,/data/cr/STAMP_10X_1/outs/filtered_feature_bc_matrix
+sample,bam,matrix_dir,barcodes
+STAMP_10X_1,/data/cr/STAMP_10X_1/outs/possorted_genome_bam.bam,/data/cr/STAMP_10X_1/outs/filtered_feature_bc_matrix,/data/qc/STAMP_10X_1_qc_barcodes.tsv.gz
+STAMP_10X_2,/data/cr/STAMP_10X_2/outs/possorted_genome_bam.bam,/data/cr/STAMP_10X_2/outs/filtered_feature_bc_matrix,
 ```
+
+`barcodes` is optional per row; leave it empty to use all Cell Ranger cells.
 
 Example samplesheets are bundled under [`assets/samplesheets/`](../assets/samplesheets/).
 

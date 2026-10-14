@@ -10,10 +10,13 @@ Required inputs
 Optional inputs
 ---------------
 --min-count        Minimum total edited reads per site across all cells (default: 3)
---max-frac         Max per-cell editing fraction at a site (default: 0.10)
---site-max-frac    Max per-site editing fraction across all cells, Filter 6
-                   (default: 0.05; only applied with --filter-site-max-frac)
---output-dir / -o  If given, all TSV outputs and images are written to this directory
+--output-dir / -o  If given, all TSV outputs are written to this directory
+
+There is no editing-fraction filter here. A per-cell fraction is meaningless at
+1-3 reads per cell per site (one real edit reads as 0.33-1.0), and a per-site
+fraction needs true read depth, which MARINE's edit table cannot supply. That
+filter (F5) runs downstream in helper_filter_site_frac_sc.py on the sites.bed
+written here.
 
 Example
 -------
@@ -21,18 +24,18 @@ python filter_edits.py \\
     --marine-results results/final_filtered_site_info_annotated.tsv \\
     --dbsnp-bed      reference/mm10_dbsnp_combined.bed3 \\
     --min-count 3    \\
-    --max-frac 0.10  \\
     --output-dir     filtered_output/
 """
 
 import argparse
-import math
 import os
 import sys
 
 import pandas as pd
-import matplotlib.pyplot as plt
 import pybedtools
+
+# Same directory (bin/); shared so F1–F4 and F5 count their steps identically.
+from helper_filter_site_frac_sc import step_stats
 
 
 # ---------------------------------------------------------------------------
@@ -108,100 +111,9 @@ def filter_min_total_edits(df, min_count=3):
     return df[site_totals >= min_count].copy()
 
 
-def filter_max_editing_fraction(df, max_frac=0.10):
-    """Remove rows where a cell's edit_fraction at a site exceeds max_frac.
-
-    Per (cell, site), not per site. Doubles as a germline-variant filter: a SNP
-    sits at edit_fraction ~1.0 in the cells carrying it, so this drops it even
-    when dbSNP does not list it. Costs sensitivity in return -- a row needs
-    coverage >= 1/max_frac in that one cell to survive with a single edit.
-    """
-    return df[df["edit_fraction"] <= max_frac].copy()
-
-
-def filter_max_site_editing_fraction(df, max_frac=0.05):
-    """Drop sites whose edited-read fraction across all cells exceeds max_frac.
-
-    Off by default. MARINE emits rows only for cells that HAVE an edit at a
-    site, so summing `coverage` here gives coverage in edited cells only, not
-    total coverage at the site -- the resulting fraction is biased low for genes
-    with many deeply covered edited cells. Measured on rep1 chr19 it retains 7
-    genes (Malat1 dominating) and halves C>T purity, so it is exposed as an
-    opt-in experiment rather than part of the default chain. Computing this
-    correctly needs MARINE's full coverage matrix, including unedited cells.
-    """
-    grouped = df.groupby(["contig", "position"])
-    site_frac = (
-        grouped["count"].transform("sum") / grouped["coverage"].transform("sum")
-    )
-    return df[site_frac <= max_frac].copy()
-
-
 def filter_unannotated(df):
     """Remove sites with no gene annotation (feature_type == -1)."""
     return df[df["feature_type"].astype(str) != "-1"].copy()
-
-
-# ---------------------------------------------------------------------------
-# Plotting helpers
-# ---------------------------------------------------------------------------
-
-def _pie_grid(steps, title, output_path):
-    """Render one pie chart per (label, DataFrame) pair in *steps* as a grid image."""
-    n = len(steps)
-    ncols = min(n, 3)
-    nrows = math.ceil(n / ncols)
-
-    fig, axes = plt.subplots(nrows, ncols, figsize=(6 * ncols, 5 * nrows))
-    axes_flat = axes.flatten() if n > 1 else [axes]
-
-    for ax, (label, d) in zip(axes_flat, steps):
-        counts = d["strand_conversion"].value_counts()
-        ax.pie(counts, labels=counts.index, autopct="%1.1f%%", startangle=90)
-        ax.set_title(f"{label}\n({len(d):,} edits)", fontsize=10)
-
-    for ax in axes_flat[n:]:
-        ax.set_visible(False)
-
-    fig.suptitle(title, fontsize=13, y=1.01)
-    plt.tight_layout()
-
-    if output_path:
-        plt.savefig(output_path, bbox_inches="tight", dpi=150)
-        print(f"  Saved: {output_path}")
-    else:
-        plt.show()
-    plt.close()
-
-
-def _hist_grid(steps, output_path):
-    """Render editing-fraction histograms for every step after 'Raw input'."""
-    plot_steps = [(lbl, d) for lbl, d in steps if lbl != "Raw input"]
-    n = len(plot_steps)
-    ncols = min(n, 2)
-    nrows = math.ceil(n / ncols)
-
-    fig, axes = plt.subplots(nrows, ncols, figsize=(6 * ncols, 5 * nrows))
-    axes_flat = axes.flatten() if n > 1 else [axes]
-
-    for ax, (label, d) in zip(axes_flat, plot_steps):
-        ax.hist(d["edit_fraction"], bins=50, range=(0, 0.2),
-                color="skyblue", edgecolor="black")
-        ax.set_title(label, fontsize=10)
-        ax.set_xlabel("Editing Fraction")
-        ax.set_ylabel("Frequency")
-
-    for ax in axes_flat[n:]:
-        ax.set_visible(False)
-
-    plt.tight_layout()
-
-    if output_path:
-        plt.savefig(output_path, bbox_inches="tight", dpi=150)
-        print(f"  Saved: {output_path}")
-    else:
-        plt.show()
-    plt.close()
 
 
 # ---------------------------------------------------------------------------
@@ -219,12 +131,8 @@ def main():
                         help="Path to dbSNP BED file")
     parser.add_argument("--min-count", type=int, default=3,
                         help="Min total edited reads per site (Filter 3)")
-    parser.add_argument("--max-frac", type=float, default=0.10,
-                        help="Max per-cell editing fraction at a site (Filter 4)")
-    parser.add_argument("--site-max-frac", type=float, default=0.05,
-                        help="Max per-site editing fraction across all cells (Filter 6)")
     parser.add_argument("--output-dir", "-o", default=None,
-                        help="Directory to save all outputs (TSVs + images)")
+                        help="Directory to save all outputs")
     # ── Per-filter on/off controls (set flag to skip that filter entirely) ────
     parser.add_argument("--no-filter-multi-conversion", action="store_true", default=False,
                         help="Skip Filter 1 — sites showing multiple conversion types")
@@ -232,13 +140,8 @@ def main():
                         help="Skip Filter 2 — dbSNP overlap removal")
     parser.add_argument("--no-filter-min-count",        action="store_true", default=False,
                         help="Skip Filter 3 — minimum total edited reads per site")
-    parser.add_argument("--no-filter-max-frac",         action="store_true", default=False,
-                        help="Skip Filter 4 — max editing-fraction threshold")
     parser.add_argument("--no-filter-unannotated",      action="store_true", default=False,
-                        help="Skip Filter 5 — unannotated site removal")
-    # Filter 6 is opt-in rather than opt-out: see filter_max_site_editing_fraction.
-    parser.add_argument("--filter-site-max-frac",       action="store_true", default=False,
-                        help="Enable Filter 6 — per-site editing-fraction threshold")
+                        help="Skip Filter 4 — unannotated site removal")
     args = parser.parse_args()
 
     if args.output_dir:
@@ -284,39 +187,16 @@ def main():
     steps.append((f"After F3\n(<{args.min_count} total edits)", df_03))
 
     # ---- Filter 4 -----------------------------------------------------------
-    if args.no_filter_max_frac:
-        print("\nFilter 4: SKIPPED (--no-filter-max-frac)")
+    if args.no_filter_unannotated:
+        print("\nFilter 4: SKIPPED (--no-filter-unannotated)")
         df_04 = df_03
     else:
-        print(f"\nFilter 4: Remove cell-site entries with edit fraction > {args.max_frac}")
-        df_04 = filter_max_editing_fraction(df_03, max_frac=args.max_frac)
+        print("\nFilter 4: Remove unannotated sites (feature_type == -1)")
+        df_04 = filter_unannotated(df_03)
         _report(df_03, df_04)
-    steps.append((f"After F4\n(cell frac > {args.max_frac})", df_04))
+    steps.append(("After F4\n(unannotated)", df_04))
 
-    # ---- Filter 5 -----------------------------------------------------------
-    if args.no_filter_unannotated:
-        print("\nFilter 5: SKIPPED (--no-filter-unannotated)")
-        df_05 = df_04
-    else:
-        print("\nFilter 5: Remove unannotated sites (feature_type == -1)")
-        df_05 = filter_unannotated(df_04)
-        _report(df_04, df_05)
-    steps.append(("After F5\n(unannotated)", df_05))
-
-    # ---- Filter 6 (opt-in) --------------------------------------------------
-    if not args.filter_site_max_frac:
-        print("\nFilter 6: SKIPPED (enable with --filter-site-max-frac)")
-        df_06 = df_05
-    else:
-        print(f"\nFilter 6: Remove sites with per-site edit fraction > {args.site_max_frac}")
-        df_06 = filter_max_site_editing_fraction(df_05, max_frac=args.site_max_frac)
-        _report(df_05, df_06)
-    # Appended unconditionally, like every other filter, so the summary table and
-    # the pie/histogram grids always show all six steps -- a skipped filter shows
-    # as a no-op row rather than vanishing from the figures.
-    steps.append((f"After F6\n(site frac > {args.site_max_frac})", df_06))
-
-    df_final = df_06
+    df_final = df_04
 
     # ---- Summary table ------------------------------------------------------
     print("\n--- Summary ---")
@@ -340,16 +220,21 @@ def main():
         df_final.to_csv(final_path, sep="\t", index=False)
         print(f"Saved filtered data → {final_path}")
 
-    # ---- Plots --------------------------------------------------------------
-    print("\nGenerating plots ...")
+        sites = df_final[["contig", "position"]].drop_duplicates()
+        sites = sites.sort_values(["contig", "position"], kind="mergesort")
+        bed_path = os.path.join(args.output_dir, "sites.bed")
+        pd.DataFrame({"contig": sites["contig"],
+                      "start":  sites["position"] - 1,     # 1-based → 0-based BED start
+                      "end":    sites["position"]}).to_csv(
+            bed_path, sep="\t", header=False, index=False)
+        print(f"Saved {len(sites):,} surviving sites → {bed_path}")
 
-    pie_path  = os.path.join(args.output_dir, "piecharts.png")  if args.output_dir else None
-    hist_path = os.path.join(args.output_dir, "edit_fraction_histograms.png") if args.output_dir else None
-
-    # add sample name to the title of the pie charts
-    sample_name = os.path.basename(os.path.dirname(args.marine_results))
-    _pie_grid(steps, f"Strand-conversion distribution at each filtering step ({sample_name})", pie_path)
-    _hist_grid(steps, hist_path)
+        # Plots are drawn by helper_filter_site_frac_sc.py (FILTER_SITE_FRAC_SC),
+        # which runs whether or not F5 is on, so F1–F5 share one set of figures.
+        # These per-step counts are all it needs from here.
+        stats_path = os.path.join(args.output_dir, "filter_step_stats_f1_f4.tsv")
+        step_stats(steps).to_csv(stats_path, sep="\t", index=False)
+        print(f"Saved per-step counts for plotting → {stats_path}")
 
     print("\nDone.")
 

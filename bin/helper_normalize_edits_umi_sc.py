@@ -2,6 +2,7 @@
 import pandas as pd
 import scanpy as sc
 import numpy as np
+import scipy.sparse as sp
 import argparse
 import logging
 import os
@@ -13,20 +14,44 @@ logger = logging.getLogger(__name__)
 def process_counts_matrix(counts_matrix_path):
     """
     Reads a 10x mtx directory and returns a counts DataFrame with total reads per cell.
+
+    Columns are gene symbols, with the counts of every gene_id sharing a symbol
+    summed. MARINE annotates edits by symbol, so edits from both Aldoa loci
+    (ENSMUSG00000030695, ENSMUSG00000114515) arrive as "Aldoa"; reading with
+    var_names='gene_symbols' instead renames the second locus "Aldoa-1" and
+    divides both loci's edits by the first locus' counts. Same scheme as the bulk
+    branch, where featureCounts -g gene_name merges them.
     """
-    adata = sc.read_10x_mtx(counts_matrix_path, var_names='gene_symbols')
-    count_matrix = adata.to_df()
+    adata = sc.read_10x_mtx(counts_matrix_path, var_names='gene_ids')
+    symbols = adata.var['gene_symbols'].astype(str).values
+    uniq, idx = np.unique(symbols, return_inverse=True)
+    collapse = sp.csr_matrix((np.ones(len(idx), dtype=adata.X.dtype), (np.arange(len(idx)), idx)),
+                             shape=(len(idx), len(uniq)))
+    counts = sp.csr_matrix(adata.X) @ collapse
+
+    shared = pd.Series(symbols).value_counts()
+    shared = shared[shared > 1]
+    if len(shared):
+        logger.warning(f"{len(shared)} gene symbol(s) span more than one gene_id; their counts "
+                       f"are summed: {', '.join(shared.index[:10])}"
+                       f"{' ...' if len(shared) > 10 else ''}")
+
+    count_matrix = pd.DataFrame(counts.toarray(), index=adata.obs_names, columns=uniq)
     count_matrix['total_reads'] = count_matrix.sum(axis=1)
     return count_matrix
 
 def calculate_length_from_bed(bed):
     """
     Reads a BED file, calculates gene lengths, and returns a DataFrame with feature_name and length.
+
+    One row per symbol: a symbol listed once per gene_id would otherwise duplicate
+    every edit in the merge below and double-count it. The longest locus is kept;
+    length only feeds EPKM/EPKMR, not EPR.
     """
     bed_df = pd.read_csv(bed, sep="\t", header=None)
     bed_df.columns = ['contig', 'start', 'end', 'feature_name', 'region', 'strand']
     bed_df['length'] = bed_df['end'] - bed_df['start']
-    return bed_df[['feature_name', 'length']]
+    return bed_df.groupby('feature_name', as_index=False)['length'].max()
 
 def annotate_edits_with_gene_length(edits, bed):
     """
