@@ -1,7 +1,7 @@
 lint:
   template_strings:
     - assets/workflow_FLARE/Snakefile
-nf_core_version: 4.0.2
+nf_core_version: 4.1.0
 repository_type: pipeline
 template:
   author: Aravind Sundaravadivelu
