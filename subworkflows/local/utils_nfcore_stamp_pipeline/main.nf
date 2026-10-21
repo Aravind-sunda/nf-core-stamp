@@ -11,7 +11,7 @@
 include { UTILS_NFSCHEMA_PLUGIN     } from '../../nf-core/utils_nfschema_plugin'
 include { paramsSummaryMap          } from 'plugin/nf-schema'
 include { samplesheetToList         } from 'plugin/nf-schema'
-include { paramsHelp                } from 'plugin/nf-schema'
+// include { paramsHelp                } from 'plugin/nf-schema'
 include { completionEmail           } from '../../nf-core/utils_nfcore_pipeline'
 include { completionSummary         } from '../../nf-core/utils_nfcore_pipeline'
 include { UTILS_NFCORE_PIPELINE     } from '../../nf-core/utils_nfcore_pipeline'
@@ -77,7 +77,7 @@ workflow PIPELINE_INITIALISATION {
         before_text = before_text.replaceAll(/\033\[[0-9;]*m/, '')
     }
 
-    command = "nextflow run ${workflow.manifest.name} -profile <docker/singularity/.../institute> --input samplesheet.csv --outdir <OUTDIR>"
+    command = "nextflow run ${workflow.manifest.name} -profile <docker/singularity/.../institute> --mode <bulk|sc> --input samplesheet.csv --outdir <OUTDIR>"
 
     UTILS_NFSCHEMA_PLUGIN (
         workflow,
@@ -105,26 +105,14 @@ workflow PIPELINE_INITIALISATION {
     validateInputParameters()
 
     //
-    // Create channel from input file provided through params.input
+    // Create channel from input samplesheet
+    // Columns (in schema order): sample(meta), fastq_1, fastq_2, bam, library_type, fastq_dir, matrix_dir, barcodes
+    // Mode detection uses ALL columns — any unexpected combination raises an explicit error.
     //
-
     channel
         .fromList(samplesheetToList(input, "${projectDir}/assets/schema_input.json"))
-        .map {
-            meta, fastq_1, fastq_2 ->
-                if (!fastq_2) {
-                    return [ meta.id, meta + [ single_end:true ], [ fastq_1 ] ]
-                } else {
-                    return [ meta.id, meta + [ single_end:false ], [ fastq_1, fastq_2 ] ]
-                }
-        }
-        .groupTuple()
-        .map { samplesheet ->
-            validateInputSamplesheet(samplesheet)
-        }
-        .map {
-            meta, fastqs ->
-                return [ meta, fastqs.flatten() ]
+        .map { meta, fastq_1, fastq_2, bam, library_type, fastq_dir, matrix_dir, barcodes ->
+            classifyAndValidateRow(meta, fastq_1, fastq_2, bam, library_type, fastq_dir, matrix_dir, barcodes)
         }
         .set { ch_samplesheet }
 
@@ -183,27 +171,257 @@ workflow PIPELINE_COMPLETION {
     FUNCTIONS
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 */
+
 //
 // Check and validate pipeline parameters
 //
 def validateInputParameters() {
-    genomeExistsError()
-}
+    def mode = params.mode
 
-//
-// Validate channels from input samplesheet
-//
-def validateInputSamplesheet(input) {
-    def (metas, fastqs) = input[1..2]
-
-    // Check that multiple runs of the same sample are of the same datatype i.e. single-end / paired-end
-    def endedness_ok = metas.collect{ meta -> meta.single_end }.unique().size == 1
-    if (!endedness_ok) {
-        error("Please check input samplesheet -> Multiple runs of a sample must be of the same datatype i.e. single-end or paired-end: ${metas[0].id}")
+    if (!mode || !['bulk', 'sc'].contains(mode)) {
+        error("--mode must be 'bulk' or 'sc', got: '${mode}'")
     }
 
-    return [ metas[0], fastqs ]
+    if (mode == 'bulk') {
+        if (!params.run_marine && !params.run_sailor) {
+            error("--mode bulk: at least one of --run_marine or --run_sailor must be true.")
+        }
+        // No --strandedness requirement for SAILOR-only runs: BULK_PREPROCESS runs
+        // INFER_STRANDEDNESS for every bulk sample regardless of which callers are
+        // enabled, and the workflow falls back to that consensus. --strandedness
+        // remains available to override it.
+        if (params.run_sailor) {
+            if (!params.sailor_snakefile) {
+                error("--run_sailor true requires --sailor_snakefile (path to SAILOR Snakefile).")
+            }
+        }
+        // MARINE needs the FASTA for its calmd step and SAILOR for its Snakemake
+        // rules, so it is required for any bulk run. Both modules declare it as a
+        // mandatory input, so a missing value leaves an empty channel and the
+        // process is skipped silently rather than failing.
+        if (!params.fasta) {
+            error("--mode bulk requires --fasta (MARINE calmd step / SAILOR Snakemake rules).")
+        }
+        if (params.run_flare) {
+            // FLARE (RBP-STAMP) operates on SAILOR outputs, so SAILOR must run.
+            if (!params.run_sailor) {
+                error("--run_flare true requires --run_sailor true (FLARE identifies clusters from SAILOR edit calls).")
+            }
+            if (!params.flare_snakefile) {
+                error("--run_flare true requires --flare_snakefile (path to FLARE Snakefile).")
+            }
+            // Regions are either supplied pre-built or generated from the GTF.
+            if (!params.flare_regions && !params.gtf) {
+                error("--run_flare true requires either --flare_regions (pre-built regions folder) or --gtf (to generate one).")
+            }
+        }
+        if (!params.gene_bed) {
+            error("--mode bulk requires --gene_bed (BED6 gene model file).")
+        }
+        if (!params.dbsnp_bed) {
+            error("--mode bulk requires --dbsnp_bed (dbSNP BED file).")
+        }
+        // These were previously gated on --run_marine, from when alignment and
+        // quantification lived inside BULK_MARINE. BULK_PREPROCESS now runs them for
+        // every bulk run, and both callers end in a metaPlotR step, so gating them
+        // let a SAILOR-only run start with an empty channel and skip featureCounts
+        // or metaPlotR without reporting anything.
+        if (!params.gtf) {
+            error("--mode bulk requires --gtf (STAR and featureCounts run for every bulk run).")
+        }
+        if (!params.genome && !params.genepred) {
+            error("--mode bulk requires either --genome (to select a built-in genePred) or --genepred (custom genePred file) for metaPlotR.")
+        }
+    }
+
+    if (mode == 'sc') {
+        if (params.run_flare) {
+            error("--run_flare is only supported in --mode bulk (RBP-STAMP is bulk RNA-seq).")
+        }
+        if (!params.fasta) {
+            error("--mode sc requires --fasta (genome FASTA file).")
+        }
+        if (!params.gene_bed) {
+            error("--mode sc requires --gene_bed (BED6 gene model file for MARINE annotation).")
+        }
+        if (!params.dbsnp_bed) {
+            error("--mode sc requires --dbsnp_bed (dbSNP BED file).")
+        }    }
 }
+
+//
+// Classify a single samplesheet row and validate ALL column combinations explicitly.
+// Returns a tuple whose structure depends on the detected mode:
+//   bulk + FASTQ  : [ meta, reads ]         reads = [ fastq_1 ] or [ fastq_1, fastq_2 ]
+//   bulk + BAM    : [ meta, bam ]
+//   sc   + FASTQ  : [ meta, fastq_dir, barcodes ]
+//   sc   + BAM    : [ meta, bam, matrix_dir, barcodes ]
+//   barcodes is null unless the optional column is filled. It rides in the tuple
+//   rather than meta so that filling it does not invalidate cached MARINE_SC tasks.
+//
+// meta always contains:
+//   id         : sample name
+//   mode       : 'bulk' | 'sc'
+//   start      : 'fastq' | 'bam'
+//   single_end : true | false  (bulk only; null for sc)
+//
+// Resolve a path string relative to the samplesheet file's parent directory.
+// Absolute paths and URI schemes (s3://, http://, gs://) pass through unchanged.
+// This allows relative paths in samplesheets to work regardless of launchDir.
+def resolveFromSamplesheet(String p) {
+    if (!p || p == 'null') return null
+    if (p.startsWith('/') || p =~ /^[a-zA-Z][a-zA-Z0-9+\-.]*:\/\//) return file(p)
+    def base = file(params.input).toAbsolutePath().parent
+    return file(base.resolve(p))
+}
+
+def classifyAndValidateRow(meta, fastq_1, fastq_2, bam, library_type, fastq_dir, matrix_dir, barcodes) {
+    def sample   = meta.id
+    def mode     = params.mode
+
+    // Treat empty strings as absent (nf-schema returns "" for missing optional columns)
+    def has_fastq_1    = fastq_1     ? true : false
+    def has_fastq_2    = fastq_2     ? true : false
+    def has_bam        = bam         ? true : false
+    def has_lib        = library_type ? true : false
+    def has_fastq_dir  = fastq_dir   ? true : false
+    def has_matrix_dir = matrix_dir  ? true : false
+    def has_barcodes   = barcodes    ? true : false
+
+    if (mode == 'bulk' && has_barcodes) {
+        error("Sample '${sample}' [bulk]: 'barcodes' is a single-cell column and must be absent.")
+    }
+    // Checked here rather than left to staging: SITE_DEPTH_SC runs after MARINE_SC,
+    // so a bad path would otherwise surface only after hours of edit calling.
+    def barcodes_file = has_barcodes ? resolveFromSamplesheet(barcodes) : null
+    if (barcodes_file && !barcodes_file.exists()) {
+        error("Sample '${sample}' [sc]: barcodes file not found: ${barcodes_file}")
+    }
+    if (barcodes_file && !params.filter_sc_site_max_frac) {
+        log.warn("Sample '${sample}': 'barcodes' is only used by the site editing-fraction filter, " +
+                 "which is off (filter_sc_site_max_frac = false); it will be ignored.")
+    }
+
+    if (mode == 'bulk') {
+
+        // ── bulk FASTQ mode ────────────────────────────────────────────────────
+        if (has_fastq_1) {
+            // Check no SC or BAM columns are present
+            if (has_bam) {
+                error("Sample '${sample}' [bulk FASTQ]: 'bam' column must be absent when 'fastq_1' is provided.")
+            }
+            if (has_fastq_dir) {
+                error("Sample '${sample}' [bulk FASTQ]: 'fastq_dir' is a single-cell column and must be absent.")
+            }
+            if (has_matrix_dir) {
+                error("Sample '${sample}' [bulk FASTQ]: 'matrix_dir' is a single-cell column and must be absent.")
+            }
+            // library_type required
+            if (!has_lib) {
+                error("Sample '${sample}' [bulk FASTQ]: 'library_type' (SE or PE) is required.")
+            }
+            // --star_index is only needed for FASTQ-start samples, so it cannot be
+            // checked in validateInputParameters() — that runs before the samplesheet
+            // is read. Without it STAR_ALIGN gets an empty channel and is skipped, so
+            // the sample would silently produce no BAM and vanish from the results.
+            if (!params.star_index) {
+                error("Sample '${sample}' [bulk FASTQ]: --star_index is required to align FASTQ input. " +
+                      "Supply --star_index, or provide a pre-aligned 'bam' instead.")
+            }
+            // SE/PE consistency
+            if (library_type == 'SE' && has_fastq_2) {
+                error("Sample '${sample}' [bulk FASTQ]: library_type is 'SE' but 'fastq_2' is also provided.")
+            }
+            if (library_type == 'PE' && !has_fastq_2) {
+                error("Sample '${sample}' [bulk FASTQ]: library_type is 'PE' but 'fastq_2' is missing.")
+            }
+
+            def single_end = (library_type == 'SE')
+            def reads      = single_end ? [ resolveFromSamplesheet(fastq_1) ] : [ resolveFromSamplesheet(fastq_1), resolveFromSamplesheet(fastq_2) ]
+            def new_meta   = meta + [ mode: 'bulk', start: 'fastq', single_end: single_end ]
+            return [ new_meta, reads ]
+        }
+
+        // ── bulk BAM mode ──────────────────────────────────────────────────────
+        else if (has_bam) {
+            if (has_fastq_1 || has_fastq_2) {
+                error("Sample '${sample}' [bulk BAM]: 'fastq_1'/'fastq_2' must be absent when 'bam' is provided.")
+            }
+            if (has_fastq_dir) {
+                error("Sample '${sample}' [bulk BAM]: 'fastq_dir' is a single-cell column and must be absent.")
+            }
+            if (has_matrix_dir) {
+                error("Sample '${sample}' [bulk BAM]: 'matrix_dir' is a single-cell column and must be absent.")
+            }
+            if (!has_lib) {
+                error("Sample '${sample}' [bulk BAM]: 'library_type' (SE or PE) is required.")
+            }
+
+            def single_end = (library_type == 'SE')
+            def new_meta   = meta + [ mode: 'bulk', start: 'bam', single_end: single_end ]
+            return [ new_meta, resolveFromSamplesheet(bam) ]
+        }
+
+        else {
+            error(
+                "Sample '${sample}' [--mode bulk]: cannot determine start point.\n" +
+                "  Provide 'fastq_1' (and optionally 'fastq_2') for FASTQ input, or 'bam' for BAM input.\n" +
+                "  Both 'library_type' and either 'fastq_1'/'bam' are required."
+            )
+        }
+
+    } else if (mode == 'sc') {
+
+        // ── sc FASTQ mode ──────────────────────────────────────────────────────
+        if (has_fastq_dir) {
+            if (has_bam) {
+                error("Sample '${sample}' [sc FASTQ]: 'bam' must be absent when 'fastq_dir' is provided.")
+            }
+            if (has_fastq_1 || has_fastq_2) {
+                error("Sample '${sample}' [sc FASTQ]: 'fastq_1'/'fastq_2' are bulk columns and must be absent. Provide 'fastq_dir' for single-cell FASTQ.")
+            }
+            if (has_lib) {
+                error("Sample '${sample}' [sc FASTQ]: 'library_type' is a bulk column and must be absent.")
+            }
+            if (has_matrix_dir) {
+                error("Sample '${sample}' [sc FASTQ]: 'matrix_dir' must be absent when starting from FASTQ (CellRanger will generate it).")
+            }
+
+            def new_meta = meta + [ mode: 'sc', start: 'fastq', single_end: null ]
+            return [ new_meta, resolveFromSamplesheet(fastq_dir), barcodes_file ]
+        }
+
+        // ── sc BAM mode ────────────────────────────────────────────────────────
+        else if (has_bam) {
+            if (has_fastq_dir) {
+                error("Sample '${sample}' [sc BAM]: 'fastq_dir' must be absent when 'bam' is provided.")
+            }
+            if (has_fastq_1 || has_fastq_2) {
+                error("Sample '${sample}' [sc BAM]: 'fastq_1'/'fastq_2' are bulk columns and must be absent.")
+            }
+            if (has_lib) {
+                error("Sample '${sample}' [sc BAM]: 'library_type' is a bulk column and must be absent.")
+            }
+            if (!has_matrix_dir) {
+                error("Sample '${sample}' [sc BAM]: 'matrix_dir' (CellRanger filtered_feature_bc_matrix directory) is required.")
+            }
+
+            def new_meta = meta + [ mode: 'sc', start: 'bam', single_end: null ]
+            return [ new_meta, resolveFromSamplesheet(bam), resolveFromSamplesheet(matrix_dir), barcodes_file ]
+        }
+
+        else {
+            error(
+                "Sample '${sample}' [--mode sc]: cannot determine start point.\n" +
+                "  Provide 'fastq_dir' for FASTQ input (CellRanger will run), or 'bam' + 'matrix_dir' for BAM input."
+            )
+        }
+
+    } else {
+        error("Unknown --mode '${mode}'. Must be 'bulk' or 'sc'.")
+    }
+}
+
 //
 // Get attribute from genome config file e.g. fasta
 //
@@ -217,58 +435,40 @@ def getGenomeAttribute(attribute) {
 }
 
 //
-// Exit pipeline if incorrect --genome key provided
-//
-def genomeExistsError() {
-    if (params.genomes && params.genome && !params.genomes.containsKey(params.genome)) {
-        def error_string = "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n" +
-            "  Genome '${params.genome}' not found in any config files provided to the pipeline.\n" +
-            "  Currently, the available genome keys are:\n" +
-            "  ${params.genomes.keySet().join(", ")}\n" +
-            "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
-        error(error_string)
-    }
-}
-//
 // Generate methods description for MultiQC
 //
 def toolCitationText() {
-    // TODO nf-core: Optionally add in-text citation tools to this list.
-    // Can use ternary operators to dynamically construct based conditions, e.g. params["run_xyz"] ? "Tool (Foo et al. 2023)" : "",
-    // Uncomment function in methodsDescriptionText to render in MultiQC report
     def citation_text = [
             "Tools used in the workflow included:",
             "FastQC (Andrews 2010),",
+            params.mode == 'bulk' ? "fastp (Chen et al. 2018)," : "",
+            params.mode == 'bulk' ? "STAR (Dobin et al. 2013)," : "",
+            params.mode == 'sc'   ? "CellRanger (10x Genomics)," : "",
+            "MARINE (Brannan et al.),"  ,
+            params.mode == 'bulk' && params.run_sailor ? "SAILOR (Vogel et al.)," : "",
+            "featureCounts (Liao et al. 2014),"  ,
             "MultiQC (Ewels et al. 2016)",
             "."
-        ].join(' ').trim()
+        ].findAll { it }.join(' ').trim()
 
     return citation_text
 }
 
 def toolBibliographyText() {
-    // TODO nf-core: Optionally add bibliographic entries to this list.
-    // Can use ternary operators to dynamically construct based conditions, e.g. params["run_xyz"] ? "<li>Author (2023) Pub name, Journal, DOI</li>" : "",
-    // Uncomment function in methodsDescriptionText to render in MultiQC report
     def reference_text = [
             "<li>Andrews S, (2010) FastQC, URL: https://www.bioinformatics.babraham.ac.uk/projects/fastqc/).</li>",
-            "<li>Ewels, P., Magnusson, M., Lundin, S., & Käller, M. (2016). MultiQC: summarize analysis results for multiple tools and samples in a single report. Bioinformatics , 32(19), 3047–3048. doi: /10.1093/bioinformatics/btw354</li>"
+            "<li>Ewels, P., Magnusson, M., Lundin, S., & Käller, M. (2016). MultiQC: summarize analysis results for multiple tools and samples in a single report. Bioinformatics, 32(19), 3047–3048.</li>"
         ].join(' ').trim()
 
     return reference_text
 }
 
 def methodsDescriptionText(mqc_methods_yaml) {
-    // Convert  to a named map so can be used as with familiar NXF ${workflow} variable syntax in the MultiQC YML file
     def meta = [:]
     meta.workflow = workflow.toMap()
     meta["manifest_map"] = workflow.manifest.toMap()
 
-    // Pipeline DOI
     if (meta.manifest_map.doi) {
-        // Using a loop to handle multiple DOIs
-        // Removing `https://doi.org/` to handle pipelines using DOIs vs DOI resolvers
-        // Removing ` ` since the manifest.doi is a string and not a proper list
         def temp_doi_ref = ""
         def manifest_doi = meta.manifest_map.doi.tokenize(",")
         manifest_doi.each { doi_ref ->
@@ -278,14 +478,8 @@ def methodsDescriptionText(mqc_methods_yaml) {
     } else meta["doi_text"] = ""
     meta["nodoi_text"] = meta.manifest_map.doi ? "" : "<li>If available, make sure to update the text to include the Zenodo DOI of version of the pipeline used. </li>"
 
-    // Tool references
     meta["tool_citations"] = ""
     meta["tool_bibliography"] = ""
-
-    // TODO nf-core: Only uncomment below if logic in toolCitationText/toolBibliographyText has been filled!
-    // meta["tool_citations"] = toolCitationText().replaceAll(", \\.", ".").replaceAll("\\. \\.", ".").replaceAll(", \\.", ".")
-    // meta["tool_bibliography"] = toolBibliographyText()
-
 
     def methods_text = mqc_methods_yaml.text
 

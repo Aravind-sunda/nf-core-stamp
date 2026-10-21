@@ -3,12 +3,46 @@
     IMPORT MODULES / SUBWORKFLOWS / FUNCTIONS
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 */
-include { FASTQC                 } from '../modules/nf-core/fastqc/main'
+
+include { BULK_PREPROCESS        } from '../subworkflows/local/bulk_preprocess/main'
+include { BULK_MARINE            } from '../subworkflows/local/bulk_marine/main'
+include { BULK_SAILOR            } from '../subworkflows/local/bulk_sailor/main'
+include { BULK_FLARE             } from '../subworkflows/local/bulk_flare/main'
+include { SC_MARINE              } from '../subworkflows/local/sc_marine/main'
+include { FLARE_GENERATE_REGIONS } from '../modules/local/flare_generate_regions/main'
+include { PREPARE_DBSNP          } from '../modules/local/prepare_dbsnp/main'
+include { SAMTOOLS_FAIDX         } from '../modules/local/samtools_faidx/main'
+include { GUNZIP as GUNZIP_GTF      } from '../modules/local/gunzip/main'
+include { GUNZIP as GUNZIP_GENE_BED } from '../modules/local/gunzip/main'
 include { MULTIQC                } from '../modules/nf-core/multiqc/main'
 include { paramsSummaryMap       } from 'plugin/nf-schema'
 include { paramsSummaryMultiqc   } from '../subworkflows/nf-core/utils_nfcore_pipeline'
 include { softwareVersionsToYAML } from '../subworkflows/nf-core/utils_nfcore_pipeline'
 include { methodsDescriptionText } from '../subworkflows/local/utils_nfcore_stamp_pipeline'
+
+/*
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    GENEPRED ASSET LOOKUP
+    Built-in genePred files for supported genomes (in assets/genepred/).
+    Override with --genepred to supply your own file; select built-in with --genome.
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+*/
+
+def resolveGenePred(projectDir) {
+    def assets = [
+        hg19:     "${projectDir}/assets/genepred/hg19_ncbiRefSeqCurated.txt.gz",
+        hg38:     "${projectDir}/assets/genepred/hg38_ncbiRefSeqCurated.txt.gz",
+        hg38_V44: "${projectDir}/assets/genepred/hg38_V44_E110_basic_knownGene_genePred.txt.gz",
+        mm10:     "${projectDir}/assets/genepred/mm10_ncbiRefSeqCurated.txt.gz",
+        mm39:     "${projectDir}/assets/genepred/mm39_ncbiRefSeqCurated.txt.gz",
+    ]
+    if (params.genepred) {
+        return params.genepred
+    } else if (params.genome && assets.containsKey(params.genome)) {
+        return assets[params.genome]
+    }
+    return null
+}
 
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -19,7 +53,7 @@ include { methodsDescriptionText } from '../subworkflows/local/utils_nfcore_stam
 workflow STAMP {
 
     take:
-    ch_samplesheet // channel: samplesheet read in from --input
+    ch_samplesheet               // channel: typed tuples from classifyAndValidateRow()
     multiqc_config
     multiqc_logo
     multiqc_methods_description
@@ -27,21 +61,235 @@ workflow STAMP {
 
     main:
 
-    def ch_versions = channel.empty()
+    def ch_versions      = channel.empty()
     def ch_multiqc_files = channel.empty()
-    //
-    // MODULE: Run FastQC
-    //
-    FASTQC(ch_samplesheet)
-    ch_multiqc_files = ch_multiqc_files.mix(FASTQC.out.zip.map{ _meta, file -> file })
 
-    //
-    // Collate and save software versions
-    //
+    // ── Reference file channels (validated in validateInputParameters()) ──────
+    // channel.value(file()) creates a value channel directly — channel.fromPath().first()
+    // triggers "first is useless on a value channel" in Nextflow >= 24.x.
+    def ch_fasta = params.fasta
+        ? channel.value(file(params.fasta, checkIfExists: true))
+        : channel.empty()
+
+    // Use pre-existing .fai if present; otherwise generate it with samtools faidx.
+    def ch_fasta_fai = channel.empty()
+    if (params.fasta) {
+        def fai_path = file(params.fasta + '.fai')
+        if (fai_path.exists()) {
+            ch_fasta_fai = channel.value(fai_path)
+        } else {
+            SAMTOOLS_FAIDX(ch_fasta)
+            ch_fasta_fai = SAMTOOLS_FAIDX.out.fai
+            ch_versions  = ch_versions.mix(SAMTOOLS_FAIDX.out.versions)
+        }
+    }
+
+    def ch_star_index = params.star_index
+        ? channel.value(file(params.star_index, checkIfExists: true))
+        : channel.empty()
+
+    // GTF and BED: decompress on-the-fly if .gz so that tools that don't
+    // support gzipped inputs (RSeQC infer_experiment.py, MARINE, etc.) receive
+    // a plain file. The input is a value channel, so the output is one too and
+    // broadcasts to all consumers as-is — adding .first() here only warns.
+    def ch_gtf = channel.empty()
+    if (params.gtf) {
+        if (params.gtf.endsWith('.gz')) {
+            GUNZIP_GTF(channel.value(file(params.gtf, checkIfExists: true)))
+            ch_gtf      = GUNZIP_GTF.out.file
+            ch_versions = ch_versions.mix(GUNZIP_GTF.out.versions)
+        } else {
+            ch_gtf = channel.value(file(params.gtf, checkIfExists: true))
+        }
+    }
+
+    def ch_gene_bed = channel.empty()
+    if (params.gene_bed) {
+        if (params.gene_bed.endsWith('.gz')) {
+            GUNZIP_GENE_BED(channel.value(file(params.gene_bed, checkIfExists: true)))
+            ch_gene_bed = GUNZIP_GENE_BED.out.file
+            ch_versions = ch_versions.mix(GUNZIP_GENE_BED.out.versions)
+        } else {
+            ch_gene_bed = channel.value(file(params.gene_bed, checkIfExists: true))
+        }
+    }
+
+    // Sorted once here rather than per sample: every consumer (bulk/sc filters and
+    // SAILOR) shares the same prepared file. The input is a value channel, so the
+    // output is one too and already broadcasts to every consumer — no .first().
+    def ch_dbsnp_bed = channel.empty()
+    if (params.dbsnp_bed) {
+        PREPARE_DBSNP(channel.value(file(params.dbsnp_bed, checkIfExists: true)))
+        ch_dbsnp_bed = PREPARE_DBSNP.out.bed
+        ch_versions  = ch_versions.mix(PREPARE_DBSNP.out.versions)
+    }
+
+    def ch_snakefile = params.sailor_snakefile
+        ? channel.value(file(params.sailor_snakefile, checkIfExists: true))
+        : channel.empty()
+
+    def ch_flare_snakefile = params.flare_snakefile
+        ? channel.value(file(params.flare_snakefile, checkIfExists: true))
+        : channel.empty()
+
+    def ch_cellranger_ref = params.cellranger_ref
+        ? channel.value(file(params.cellranger_ref, checkIfExists: true))
+        : channel.empty()
+
+    // ── GenePred (required for metaPlotR in bulk mode) ───────────────────────
+    def genepred_path = resolveGenePred(projectDir)
+    def ch_genepred = genepred_path
+        ? channel.value(file(genepred_path, checkIfExists: true))
+        : channel.empty()
+
+    // ── Split samplesheet by pipeline mode ───────────────────────────────────
+    ch_samplesheet.branch { entry ->
+        bulk: entry[0].mode == 'bulk'
+        sc:   entry[0].mode == 'sc'
+    }.set { ch_by_mode }
+
+    // ════════════════════════════════════════════════════════════════════════════
+    //  BULK MODE
+    // ════════════════════════════════════════════════════════════════════════════
+
+    if (params.mode == 'bulk') {
+
+        if (!params.run_marine && !params.run_sailor) {
+            log.warn("Both --run_marine and --run_sailor are false in bulk mode. Nothing to run.")
+        }
+
+        // ── Shared preprocessing: QC → trim → align → strandedness → featureCounts
+        // Runs once regardless of which edit callers are enabled, so MARINE and
+        // SAILOR can be selected independently and both normalise against the same
+        // expression matrix. FASTQ-start therefore works for SAILOR-only runs too.
+        BULK_PREPROCESS(
+            ch_by_mode.bulk,
+            ch_star_index,
+            ch_gtf,
+            ch_gene_bed
+        )
+        ch_versions      = ch_versions.mix(BULK_PREPROCESS.out.versions)
+        ch_multiqc_files = ch_multiqc_files.mix(BULK_PREPROCESS.out.multiqc)
+
+        // ── MARINE: edits → filter → normalize → metaPlotR
+        if (params.run_marine) {
+            BULK_MARINE(
+                BULK_PREPROCESS.out.bams_with_strand,
+                BULK_PREPROCESS.out.counts_matrix,
+                ch_gene_bed,
+                ch_dbsnp_bed,
+                ch_genepred,
+                ch_fasta
+            )
+            ch_versions = ch_versions.mix(BULK_MARINE.out.versions)
+        }
+
+        // ── SAILOR: all BAMs → Snakemake → ranked BEDs → metaPlotR (3 tiers)
+        if (params.run_sailor) {
+
+            // Strandedness is inferred per sample upstream; SAILOR needs one value for
+            // the whole batch, so take the consensus. --strandedness overrides it.
+            def ch_sailor_strand
+            if (params.strandedness != null) {
+                ch_sailor_strand = channel.value(params.strandedness.toInteger())
+            } else {
+                ch_sailor_strand = BULK_PREPROCESS.out.strand_codes
+                    .map { _id, strand -> strand }
+                    .collect()
+                    .map { strands ->
+                        def orig = strands.collect()
+                        def unique_strands = orig.unique()
+                        if (unique_strands.size() > 1) {
+                            def majority = orig.countBy { it }.max { it.value }.key
+                            log.warn("SAILOR: samples have mixed strandedness ${orig}. Using most common: ${majority}")
+                            majority
+                        } else {
+                            unique_strands[0]
+                        }
+                    }
+            }
+
+            // SAILOR has no unstranded mode. Warn but keep going — the run still
+            // produces output, just an incomplete one. Covers both branches above.
+            ch_sailor_strand = ch_sailor_strand.map { strand ->
+                if (strand == 0) {
+                    log.warn(
+                        "SAILOR: strandedness 0 (unstranded) is not supported — continuing anyway. " +
+                        "Roughly half the reads are discarded and per-site coverage is halved. " +
+                        "Prefer MARINE (--run_marine true) for unstranded data."
+                    )
+                }
+                strand
+            }
+
+            BULK_SAILOR(
+                BULK_PREPROCESS.out.bams,
+                ch_sailor_strand,
+                BULK_PREPROCESS.out.counts_matrix,
+                ch_fasta,
+                ch_fasta_fai,
+                ch_dbsnp_bed,
+                ch_snakefile,
+                ch_gene_bed,
+                ch_genepred
+            )
+            ch_versions = ch_versions.mix(BULK_SAILOR.out.versions)
+
+            // ── FLARE: SAILOR outputs → edit-cluster identification (RBP-STAMP)
+            // Requires SAILOR (validated in validateInputParameters), so it is
+            // nested here where BULK_SAILOR.out is guaranteed to exist.
+            if (params.run_flare) {
+
+                // Regions folder: reuse a pre-built one, or generate it from the GTF.
+                def ch_flare_regions
+                if (params.flare_regions) {
+                    ch_flare_regions = channel.value(file(params.flare_regions, checkIfExists: true))
+                } else {
+                    def ch_flare_scripts = channel.value(
+                        file("${projectDir}/assets/workflow_FLARE/scripts", checkIfExists: true)
+                    )
+                    FLARE_GENERATE_REGIONS(ch_gtf, params.flare_window_size, ch_flare_scripts)
+                    ch_versions = ch_versions.mix(FLARE_GENERATE_REGIONS.out.versions)
+                    // All inputs are value channels, so regions is one too and already
+                    // broadcasts to every sample — adding .first() here only warns.
+                    ch_flare_regions = FLARE_GENERATE_REGIONS.out.regions
+                }
+
+                BULK_FLARE(
+                    BULK_SAILOR.out.ranked_beds,
+                    BULK_SAILOR.out.output_dir,
+                    ch_flare_regions,
+                    ch_fasta,
+                    ch_fasta_fai,
+                    ch_flare_snakefile
+                )
+                ch_versions = ch_versions.mix(BULK_FLARE.out.versions)
+            }
+        }
+    }
+
+    // ════════════════════════════════════════════════════════════════════════════
+    //  SC MODE
+    // ════════════════════════════════════════════════════════════════════════════
+
+    if (params.mode == 'sc') {
+
+        SC_MARINE(
+            ch_by_mode.sc,
+            ch_cellranger_ref,
+            ch_fasta,
+            ch_gene_bed,
+            ch_dbsnp_bed
+        )
+        ch_versions      = ch_versions.mix(SC_MARINE.out.versions)
+        ch_multiqc_files = ch_multiqc_files.mix(SC_MARINE.out.multiqc)
+    }
+
+    // ── Software versions ─────────────────────────────────────────────────────
     def topic_versions = channel.topic("versions")
         .distinct()
         .branch { entry ->
-            versions_file: entry instanceof Path
+            versions_file:  entry instanceof Path
             versions_tuple: true
         }
 
@@ -49,7 +297,7 @@ workflow STAMP {
         .map { process, tool, version ->
             [ process[process.lastIndexOf(':')+1..-1], "  ${tool}: ${version}" ]
         }
-        .groupTuple(by:0)
+        .groupTuple(by: 0)
         .map { process, tool_versions ->
             tool_versions.unique().sort()
             "${process}:\n${tool_versions.join('\n')}"
@@ -64,18 +312,25 @@ workflow STAMP {
             newLine: true
         )
 
-    //
-    // MODULE: MultiQC
-    //
+    // ── MultiQC ───────────────────────────────────────────────────────────────
     ch_multiqc_files = ch_multiqc_files.mix(ch_collated_versions)
+
     def ch_summary_params = paramsSummaryMap(workflow, parameters_schema: "nextflow_schema.json")
     def ch_workflow_summary = channel.value(paramsSummaryMultiqc(ch_summary_params))
-    ch_multiqc_files = ch_multiqc_files.mix(ch_workflow_summary.collectFile(name: 'workflow_summary_mqc.yaml'))
+    ch_multiqc_files = ch_multiqc_files.mix(
+        ch_workflow_summary.collectFile(name: 'workflow_summary_mqc.yaml')
+    )
+
     def ch_multiqc_custom_methods_description = multiqc_methods_description
         ? file(multiqc_methods_description, checkIfExists: true)
         : file("${projectDir}/assets/methods_description_template.yml", checkIfExists: true)
-    def ch_methods_description = channel.value(methodsDescriptionText(ch_multiqc_custom_methods_description))
-    ch_multiqc_files = ch_multiqc_files.mix(ch_methods_description.collectFile(name: 'methods_description_mqc.yaml', sort: true))
+    def ch_methods_description = channel.value(
+        methodsDescriptionText(ch_multiqc_custom_methods_description)
+    )
+    ch_multiqc_files = ch_multiqc_files.mix(
+        ch_methods_description.collectFile(name: 'methods_description_mqc.yaml', sort: true)
+    )
+
     MULTIQC(
         ch_multiqc_files.flatten().collect().map { files ->
             [
@@ -90,8 +345,10 @@ workflow STAMP {
             ]
         }
     )
-    emit:multiqc_report = MULTIQC.out.report.map { _meta, report -> [report] }.toList() // channel: /path/to/multiqc_report.html
-    versions       = ch_versions                 // channel: [ path(versions.yml) ]
+
+    emit:
+    multiqc_report = MULTIQC.out.report.map { _meta, report -> [report] }.toList()
+    versions       = ch_versions
 }
 
 /*

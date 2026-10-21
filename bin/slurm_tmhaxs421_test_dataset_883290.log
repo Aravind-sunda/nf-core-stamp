@@ -1,0 +1,203 @@
+[14:54:49] ribostamp test dataset builder
+[14:54:49] Chromosome: chr1 | Bulk target: 150000 reads | SC target: 500000 reads
+
+[14:54:49] ====== BULK ======
+[14:54:49] --- Bulk control ---
+[14:54:49]   Input:  /home/tmhaxs421/brannanlab/tmhaxs421/TERT/test/03_star/293xt_BAMR_RPS2_DOX_rep1.Aligned.sortedByCoord.out.bam
+[14:54:49]   Reads on chr1: 4401386
+[14:54:49]   Subsampling 0.0341 of reads (samtools -s 42.0341)
+[14:54:50]   Output: ../assets/test_data/bulk_bams/ctrl_chr1.bam
+[14:54:50]   Final mapped reads: 150545
+
+[14:54:50] --- Bulk experimental ---
+[14:54:50]   Input:  /home/tmhaxs421/brannanlab/tmhaxs421/TERT/test/03_star/293xt_BAMR_RPS2_plusDOX_rep1.Aligned.sortedByCoord.out.bam
+[14:54:50]   Reads on chr1: 4895900
+[14:54:50]   Subsampling 0.0306 of reads (samtools -s 42.0306)
+[14:54:51]   Output: ../assets/test_data/bulk_bams/exp_chr1.bam
+[14:54:51]   Final mapped reads: 149812
+
+[14:54:51] Detected bulk library type: SE
+[14:54:51] Bulk samplesheet written: ../assets/test_data/samplesheets/samplesheet_bulk_bam.csv
+
+[14:54:51] ====== SINGLE-CELL ======
+[14:54:51] --- SC control ---
+[14:54:51]   Input:  /home/tmhaxs421/brannanlab/tmhaxs421/TCA_timepoint/data/t1_mESC_wt_a_S1/possorted_genome_bam.bam
+[W::hts_idx_load3] The index file is older than the data file: /home/tmhaxs421/brannanlab/tmhaxs421/TCA_timepoint/data/t1_mESC_wt_a_S1/possorted_genome_bam.bam.bai
+[14:54:51]   Reads on chr1: 33110632
+[14:54:51]   Subsampling 0.0151 of reads (samtools -s 42.0151)
+[W::hts_idx_load3] The index file is older than the data file: /home/tmhaxs421/brannanlab/tmhaxs421/TCA_timepoint/data/t1_mESC_wt_a_S1/possorted_genome_bam.bam.bai
+[14:55:06]   Output: ../assets/test_data/sc_bams/ctrl_chr1.bam
+[14:55:06]   Final mapped reads: 499222
+
+[14:55:06] --- SC experimental ---
+[14:55:06]   Input:  /home/tmhaxs421/brannanlab/tmhaxs421/TCA_timepoint/data/t1_shCTRL/outs/possorted_genome_bam.bam
+[14:55:06]   Reads on chr1: 28671875
+[14:55:06]   Subsampling 0.0174 of reads (samtools -s 42.0174)
+[14:55:19]   Output: ../assets/test_data/sc_bams/exp_chr1.bam
+[14:55:19]   Final mapped reads: 499067
+
+[14:55:19] SC samplesheet written: ../assets/test_data/samplesheets/samplesheet_sc_bam.csv
+
+[14:55:19] ====== SC FILTERED FEATURE BC MATRIX ======
+[14:55:19] --- SC control → matrix ---
+[14:55:19]   BAM: ../assets/test_data/sc_bams/ctrl_chr1.bam
+[14:55:19]   Output: ../assets/test_data/sc_matrix/ctrl/filtered_feature_bc_matrix
+  70,148 barcodes, 1,238 genes, 316,074 nonzero entries
+[14:55:24]   Done.
+
+[14:55:24] --- SC experimental → matrix ---
+[14:55:24]   BAM: ../assets/test_data/sc_bams/exp_chr1.bam
+[14:55:24]   Output: ../assets/test_data/sc_matrix/exp/filtered_feature_bc_matrix
+  40,996 barcodes, 1,211 genes, 319,776 nonzero entries
+[14:55:28]   Done.
+
+[14:55:28] ====== HG38 CHR1 STAR INDEX ======
+[14:55:28]   Already exists: ../assets/test_data/refs/hg38_chr1.fa
+[14:55:28]   STAR index already exists: ../assets/test_data/refs/star_index_hg38_chr1
+
+[14:55:28] ====== HG38 CHR1 ANNOTATION FILES ======
+[14:55:28]   Already exists: ../assets/test_data/refs/chr1_hg38_genes.gtf.gz
+[14:55:28]   Already exists: ../assets/test_data/refs/chr1_hg38_genes.bed.gz
+[14:55:28] ====== HG38 CHR1 DBSNP ======
+[14:55:30]   Already exists: ../assets/test_data/refs/chr1_hg38_dbsnp.bed (51653352 lines)
+
+
+[14:55:30] ====== MM10 CHR1 DBSNP ======
+[14:55:30]   Already exists: ../assets/test_data/refs/chr1_mm10_dbsnp.bed (13085490 lines)
+
+[14:55:30] ====== MM10 CHR1 FASTA ======
+[14:55:30]   Already exists: ../assets/test_data/refs/mm10_chr1.fa
+
+[14:55:30] ====== MM10 CHR1 ANNOTATION FILES ======
+[14:55:30]   Already exists: ../assets/test_data/refs/chr1_mm10_genes.gtf.gz
+[14:55:30]   Already exists: ../assets/test_data/refs/chr1_mm10_genes.bed.gz
+
+[14:55:30] ====== MM10 CHR1 CELLRANGER REFERENCE ======
+[14:55:30]   Already exists: ../assets/test_data/refs/cellranger_ref_mm10
+
+[14:55:30] ====== BULK FASTQ-START ======
+[14:55:30] --- Bulk control → FASTQ ---
+samtools fastq: Coordinate sorted file.  Read pairs may be out of order
+[M::bam2fq_mainloop] discarded 0 singletons
+[M::bam2fq_mainloop] processed 138879 reads
+[14:55:32]   R1: ../assets/test_data/bulk_fastqs/ctrl_chr1_R1.fastq.gz
+
+[14:55:32] --- Bulk experimental → FASTQ ---
+samtools fastq: Coordinate sorted file.  Read pairs may be out of order
+[M::bam2fq_mainloop] discarded 0 singletons
+[M::bam2fq_mainloop] processed 137504 reads
+[14:55:33]   R1: ../assets/test_data/bulk_fastqs/exp_chr1_R1.fastq.gz
+
+[14:55:33] FASTQ samplesheet written: ../assets/test_data/samplesheets/samplesheet_bulk_fastq.csv
+
+[14:55:33] ====== SC FASTQ-START ======
+[14:55:33] --- SC control → 10x FASTQ ---
+  Wrote 499,222 read pairs
+[14:55:37]   R1: ../assets/test_data/sc_fastqs/ctrl/ctrl_S1_L001_R1_001.fastq.gz
+[14:55:37]   R2: ../assets/test_data/sc_fastqs/ctrl/ctrl_S1_L001_R2_001.fastq.gz
+
+[14:55:37] --- SC experimental → 10x FASTQ ---
+  Wrote 499,067 read pairs
+[14:55:40]   R1: ../assets/test_data/sc_fastqs/exp/exp_S1_L001_R1_001.fastq.gz
+[14:55:40]   R2: ../assets/test_data/sc_fastqs/exp/exp_S1_L001_R2_001.fastq.gz
+
+[14:55:40] SC FASTQ samplesheet written: ../assets/test_data/samplesheets/samplesheet_sc_fastq.csv
+
+[14:55:40] ====== SUMMARY ======
+
+[14:55:40] All output files:
+  ../assets/test_data/bulk_bams/ctrl_chr1.bam                  6.5M
+  ../assets/test_data/bulk_bams/ctrl_chr1.bam.bai              155K
+  ../assets/test_data/bulk_bams/exp_chr1.bam                   6.4M
+  ../assets/test_data/bulk_bams/exp_chr1.bam.bai               155K
+  ../assets/test_data/bulk_fastqs/ctrl_chr1_R1.fastq.gz        4.4M
+  ../assets/test_data/bulk_fastqs/exp_chr1_R1.fastq.gz         4.4M
+  ../assets/test_data/flare/bulk_bams/minusdox_chr1.bam        17M
+  ../assets/test_data/flare/bulk_bams/minusdox_chr1.bam.bai    159K
+  ../assets/test_data/flare/bulk_bams/plusdox_chr1.bam         18M
+  ../assets/test_data/flare/bulk_bams/plusdox_chr1.bam.bai     165K
+  ../assets/test_data/flare/bulk_fastqs/minusdox_chr1_R1.fastq.gz 13M
+  ../assets/test_data/flare/bulk_fastqs/plusdox_chr1_R1.fastq.gz 13M
+  ../assets/test_data/flare/samplesheets/samplesheet_bulk_bam_flare.csv 512
+  ../assets/test_data/flare/samplesheets/samplesheet_bulk_fastq_flare.csv 512
+  ../assets/test_data/refs/cellranger_ref_mm10/fasta/genome.fa 190M
+  ../assets/test_data/refs/cellranger_ref_mm10/fasta/genome.fa.fai 512
+  ../assets/test_data/refs/cellranger_ref_mm10/genes/genes.gtf.gz 2.1M
+  ../assets/test_data/refs/cellranger_ref_mm10/reference.json  512
+  ../assets/test_data/refs/cellranger_ref_mm10/star/chrLength.txt 512
+  ../assets/test_data/refs/cellranger_ref_mm10/star/chrNameLength.txt 512
+  ../assets/test_data/refs/cellranger_ref_mm10/star/chrName.txt 512
+  ../assets/test_data/refs/cellranger_ref_mm10/star/chrStart.txt 512
+  ../assets/test_data/refs/cellranger_ref_mm10/star/exonGeTrInfo.tab 1.5M
+  ../assets/test_data/refs/cellranger_ref_mm10/star/exonInfo.tab 735K
+  ../assets/test_data/refs/cellranger_ref_mm10/star/geneInfo.tab 69K
+  ../assets/test_data/refs/cellranger_ref_mm10/star/Genome     190M
+  ../assets/test_data/refs/cellranger_ref_mm10/star/genomeParameters.txt 2.0K
+  ../assets/test_data/refs/cellranger_ref_mm10/star/SA         1.6G
+  ../assets/test_data/refs/cellranger_ref_mm10/star/SAindex    94M
+  ../assets/test_data/refs/cellranger_ref_mm10/star/sjdbInfo.txt 459K
+  ../assets/test_data/refs/cellranger_ref_mm10/star/sjdbList.fromGTF.out.tab 517K
+  ../assets/test_data/refs/cellranger_ref_mm10/star/sjdbList.out.tab 442K
+  ../assets/test_data/refs/cellranger_ref_mm10/star/transcriptInfo.tab 416K
+  ../assets/test_data/refs/chr1_hg38_dbsnp.bed                 1.2G
+  ../assets/test_data/refs/chr1_hg38_genes.bed.gz              51K
+  ../assets/test_data/refs/chr1_hg38_genes.gtf.gz              4.7M
+  ../assets/test_data/refs/chr1_mm10_dbsnp.bed                 299M
+  ../assets/test_data/refs/chr1_mm10_genes.bed.gz              27K
+  ../assets/test_data/refs/chr1_mm10_genes.gtf.gz              1.8M
+  ../assets/test_data/refs/hg38_chr1.fa                        242M
+  ../assets/test_data/refs/hg38_chr1.fa.fai                    512
+  ../assets/test_data/refs/mm10_chr1.fa                        190M
+  ../assets/test_data/refs/mm10_chr1.fa.fai                    512
+  ../assets/test_data/refs/star_index_hg38_chr1/chrLength.txt  512
+  ../assets/test_data/refs/star_index_hg38_chr1/chrNameLength.txt 512
+  ../assets/test_data/refs/star_index_hg38_chr1/chrName.txt    512
+  ../assets/test_data/refs/star_index_hg38_chr1/chrStart.txt   512
+  ../assets/test_data/refs/star_index_hg38_chr1/exonGeTrInfo.tab 4.4M
+  ../assets/test_data/refs/star_index_hg38_chr1/exonInfo.tab   2.1M
+  ../assets/test_data/refs/star_index_hg38_chr1/geneInfo.tab   131K
+  ../assets/test_data/refs/star_index_hg38_chr1/Genome         245M
+  ../assets/test_data/refs/star_index_hg38_chr1/genomeParameters.txt 1.0K
+  ../assets/test_data/refs/star_index_hg38_chr1/Log.out        999M
+  ../assets/test_data/refs/star_index_hg38_chr1/SA             1.9G
+  ../assets/test_data/refs/star_index_hg38_chr1/SAindex        94M
+  ../assets/test_data/refs/star_index_hg38_chr1/sjdbInfo.txt   971K
+  ../assets/test_data/refs/star_index_hg38_chr1/sjdbList.fromGTF.out.tab 1.1M
+  ../assets/test_data/refs/star_index_hg38_chr1/sjdbList.out.tab 935K
+  ../assets/test_data/refs/star_index_hg38_chr1/transcriptInfo.tab 1.2M
+  ../assets/test_data/samplesheets/samplesheet_bulk_bam.csv    512
+  ../assets/test_data/samplesheets/samplesheet_bulk_fastq.csv  512
+  ../assets/test_data/samplesheets/samplesheet_sc_bam.csv      512
+  ../assets/test_data/samplesheets/samplesheet_sc_fastq.csv    512
+  ../assets/test_data/sc_bams/ctrl_chr1.bam                    36M
+  ../assets/test_data/sc_bams/ctrl_chr1.bam.bai                183K
+  ../assets/test_data/sc_bams/exp_chr1.bam                     39M
+  ../assets/test_data/sc_bams/exp_chr1.bam.bai                 179K
+  ../assets/test_data/sc_fastqs/ctrl/ctrl_S1_L001_R1_001.fastq.gz 15M
+  ../assets/test_data/sc_fastqs/ctrl/ctrl_S1_L001_R2_001.fastq.gz 20M
+  ../assets/test_data/sc_fastqs/exp/exp_S1_L001_R1_001.fastq.gz 14M
+  ../assets/test_data/sc_fastqs/exp/exp_S1_L001_R2_001.fastq.gz 21M
+  ../assets/test_data/sc_matrix/ctrl/filtered_feature_bc_matrix/barcodes.tsv.gz 259K
+  ../assets/test_data/sc_matrix/ctrl/filtered_feature_bc_matrix/features.tsv.gz 10K
+  ../assets/test_data/sc_matrix/ctrl/filtered_feature_bc_matrix/matrix.mtx.gz 940K
+  ../assets/test_data/sc_matrix/exp/filtered_feature_bc_matrix/barcodes.tsv.gz 156K
+  ../assets/test_data/sc_matrix/exp/filtered_feature_bc_matrix/features.tsv.gz 9.5K
+  ../assets/test_data/sc_matrix/exp/filtered_feature_bc_matrix/matrix.mtx.gz 944K
+
+[14:55:40] Config hints:
+
+  conf/test.config (bulk BAM-start, hg38) — already configured
+    input = '/condo/brannanlab/tmhaxs421/MARINE_NextFlow/nf-core-stamp/assets/test_data/samplesheets/samplesheet_bulk_bam.csv'
+
+  conf/test_fastq.config (bulk FASTQ-start, hg38)
+    input      = '/condo/brannanlab/tmhaxs421/MARINE_NextFlow/nf-core-stamp/assets/test_data/samplesheets/samplesheet_bulk_fastq.csv'
+    star_index = '/condo/brannanlab/tmhaxs421/MARINE_NextFlow/nf-core-stamp/assets/test_data/refs/star_index_hg38_chr1'
+
+  conf/test_sc_bam.config (SC BAM-start, mm10)
+    input     = '/condo/brannanlab/tmhaxs421/MARINE_NextFlow/nf-core-stamp/assets/test_data/samplesheets/samplesheet_sc_bam.csv'
+    dbsnp_bed = '/condo/brannanlab/tmhaxs421/MARINE_NextFlow/nf-core-stamp/assets/test_data/refs/chr1_mm10_dbsnp.bed'
+
+  conf/test_sc_fastq.config (SC FASTQ-start, mm10) — update input path:
+    input = '/condo/brannanlab/tmhaxs421/MARINE_NextFlow/nf-core-stamp/assets/test_data/samplesheets/samplesheet_sc_fastq.csv'
+
+[14:55:40] Done.

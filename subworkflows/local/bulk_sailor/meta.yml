@@ -1,0 +1,55 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/nf-core/modules/master/subworkflows/yaml-schema.json
+name: "bulk_sailor"
+description: |
+  Run bulk RNA-seq editing detection with SAILOR (Bayesian A-to-I/C-to-T caller).
+  Receives pre-collected BAMs and pre-resolved strandedness from the calling workflow,
+  runs SAILOR as a single Snakemake batch job, and produces per-sample ranked edit
+  BED files and metaPlotR visualisations.
+keywords:
+  - RNA editing
+  - bulk RNA-seq
+  - SAILOR
+  - Snakemake
+  - metaPlotR
+components:
+  - sailor
+  - metaplotr_sailor
+input:
+  - ch_all_bams:
+      type: list
+      description: |
+        All bulk BAMs with BAI indices: [ meta, bam, bai ].
+        All samples are processed as a single SAILOR Snakemake batch.
+  - strandedness:
+      type: integer
+      description: |
+        Consensus strandedness integer (0 = unstranded, 1 = forward, 2 = reverse).
+        Pre-resolved by the calling workflow from INFER_STRANDEDNESS or params.strandedness.
+  - fasta:
+      type: file
+      description: Reference genome FASTA for SAILOR's internal calmd step.
+  - fasta_fai:
+      type: file
+      description: FASTA index (.fai) staged alongside fasta for SAILOR's bam_to_bw step.
+  - dbsnp_bed:
+      type: file
+      description: dbSNP BED file for SNP filtering within SAILOR.
+  - snakefile:
+      type: file
+      description: SAILOR Snakefile path; its directory is bound into the Singularity container.
+  - genepred:
+      type: file
+      description: genePred annotation file for metaPlotR metagene plots.
+output:
+  - ranked_beds:
+      type: list
+      description: |
+        Per-sample ranked and filtered edit BED files: [ meta, bed ].
+        Named *.combined.readfiltered.formatted.varfiltered.snpfiltered.ranked.bed.
+  - versions:
+      type: file
+      description: versions.yml files from all modules.
+authors:
+  - "@aravind.sunda"
+maintainers:
+  - "@aravind.sunda"

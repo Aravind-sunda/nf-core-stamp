@@ -1,0 +1,51 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/nf-core/modules/master/subworkflows/yaml-schema.json
+name: "sc_marine"
+description: |
+  Run single-cell RNA-seq editing detection with MARINE. Accepts FASTQ-start samples
+  (runs CellRanger then MARINE_SC) or BAM-start samples (runs MARINE_SC directly).
+  Strandedness is hardcoded to 2 for 10x STAMP data. Produces per-cell normalised
+  edit site tables.
+keywords:
+  - RNA editing
+  - single-cell
+  - 10x Chromium
+  - MARINE
+  - CellRanger
+components:
+  - cellranger
+  - marine_sc
+  - filter_edits_sc
+  - normalize_edits_sc
+input:
+  - ch_input:
+      type: list
+      description: |
+        Samplesheet-classified input channel. Each item is either:
+          FASTQ-start: [ meta{id, mode:'sc', start:'fastq'}, fastq_dir ]
+          BAM-start:   [ meta{id, mode:'sc', start:'bam'},   bam, matrix_dir ]
+  - cellranger_ref:
+      type: directory
+      description: Pre-built CellRanger reference directory (required for FASTQ-start; ignored for BAM-start).
+  - fasta:
+      type: file
+      description: Reference genome FASTA for samtools calmd inside MARINE_SC.
+  - gene_bed:
+      type: file
+      description: BED6 gene model file for MARINE edit annotation.
+  - dbsnp_bed:
+      type: file
+      description: dbSNP BED file used to filter known SNP positions.
+output:
+  - normalized:
+      type: list
+      description: "Per-sample normalised edit site tables: [ meta, normalized_edits.tsv ]."
+  - multiqc:
+      type: file
+      description: MultiQC-compatible QC files (CellRanger summary metrics).
+  - versions:
+      type: file
+      description: versions.yml files from all modules.
+authors:
+  - "@aravind.sunda"
+maintainers:
+  - "@aravind.sunda"

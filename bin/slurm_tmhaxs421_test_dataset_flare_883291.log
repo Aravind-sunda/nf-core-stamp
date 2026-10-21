@@ -1,0 +1,56 @@
+[14:54:54] stamp FLARE (RBP-STAMP) test dataset builder
+[14:54:54] Chromosome: chr1 | Bulk target: 500000 reads/sample | Threads: 16
+[14:54:54] Reusing shared chr1 refs from: ../assets/test_data/refs
+
+[14:54:54] ====== BULK BAMs → chr1 ======
+[14:54:54] --- Control (-DOX) ---
+[14:54:54]   Input:  /home/tmhaxs421/brannanlab/Vrutant/bulk-RNAseq/Project1/bam_index/293XTBAMRRBFOX2-DOX1_S1_merge_trimAligned.sorted.bam
+[14:54:54]   Reads on chr1: 4215667
+[14:54:54]   Subsampling 0.1186 of reads (samtools -s 42.1186)
+[14:54:56]   Output: ../assets/test_data/flare/bulk_bams/minusdox_chr1.bam  (final mapped reads: 499204)
+
+[14:54:56] --- Experimental (+DOX) ---
+[14:54:56]   Input:  /home/tmhaxs421/brannanlab/Vrutant/bulk-RNAseq/Project1/bam_index/293XTBAMRRBFOX2plusDOX1_S7_merge_trimAligned.sorted.bam
+[14:54:56]   Reads on chr1: 4342791
+[14:54:56]   Subsampling 0.1151 of reads (samtools -s 42.1151)
+[14:54:58]   Output: ../assets/test_data/flare/bulk_bams/plusdox_chr1.bam  (final mapped reads: 500143)
+
+[14:54:58] Detected bulk library type: SE
+
+[14:54:58] BAM-start samplesheet: ../assets/test_data/flare/samplesheets/samplesheet_bulk_bam_flare.csv
+
+[14:54:58] ====== BULK chr1 BAM → FASTQ ======
+[14:54:58] --- Control → FASTQ ---
+samtools fastq: Coordinate sorted file.  Read pairs may be out of order
+[M::bam2fq_mainloop] discarded 0 singletons
+[M::bam2fq_mainloop] processed 467296 reads
+[14:55:01]   R1: ../assets/test_data/flare/bulk_fastqs/minusdox_chr1_R1.fastq.gz
+
+[14:55:01] --- Experimental → FASTQ ---
+samtools fastq: Coordinate sorted file.  Read pairs may be out of order
+[M::bam2fq_mainloop] discarded 0 singletons
+[M::bam2fq_mainloop] processed 467395 reads
+[14:55:05]   R1: ../assets/test_data/flare/bulk_fastqs/plusdox_chr1_R1.fastq.gz
+
+[14:55:05] FASTQ-start samplesheet: ../assets/test_data/flare/samplesheets/samplesheet_bulk_fastq_flare.csv
+
+[14:55:05] ====== SUMMARY ======
+
+  ../assets/test_data/flare/bulk_bams/minusdox_chr1.bam            17M
+  ../assets/test_data/flare/bulk_bams/minusdox_chr1.bam.bai        159K
+  ../assets/test_data/flare/bulk_bams/plusdox_chr1.bam             18M
+  ../assets/test_data/flare/bulk_bams/plusdox_chr1.bam.bai         165K
+  ../assets/test_data/flare/bulk_fastqs/minusdox_chr1_R1.fastq.gz  13M
+  ../assets/test_data/flare/bulk_fastqs/plusdox_chr1_R1.fastq.gz   13M
+  ../assets/test_data/flare/samplesheets/samplesheet_bulk_bam_flare.csv 512
+  ../assets/test_data/flare/samplesheets/samplesheet_bulk_fastq_flare.csv 512
+
+[14:55:05] New FLARE test-data size: 60M  (refs are shared from ../assets/test_data/refs)
+
+[14:55:05] Detected library type: SE  (edit_type is C>T — RBFOX2-BAMR / APOBEC1)
+
+[14:55:05] Run the pipeline tests with:
+    nextflow run . -profile singularity,test_bulk_bam_flare   --outdir results_bam_flare
+    nextflow run . -profile singularity,test_bulk_fastq_flare --outdir results_fastq_flare
+
+[14:55:05] Done.

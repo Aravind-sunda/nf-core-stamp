@@ -1,0 +1,32 @@
+Bootstrap: docker
+From: condaforge/miniforge3:latest
+
+%labels
+    tool ribostamp_utils
+    version 1.0
+    description Python helper scripts for the ribostamp nf-core pipeline
+
+%post
+    # Install all Python dependencies in one pass
+    mamba install -y -c conda-forge -c bioconda \
+        python=3.10 \
+        "pandas>=2.0" \
+        numpy \
+        "matplotlib-base>=3.7" \
+        "pybedtools>=0.9" \
+        bedtools \
+        "scanpy>=1.9"
+    mamba clean -afy
+    find /opt/conda -type f -name "*.pyc" -delete
+
+    # Sanity check
+    python -c "import pandas, numpy, matplotlib, pybedtools, scanpy; print('ribostamp_utils OK')"
+
+%environment
+    export PATH=/opt/conda/bin:$PATH
+    export MPLCONFIGDIR=/tmp/matplotlib_cache
+    export NUMBA_CACHE_DIR=/tmp/numba_cache
+    export PYTHONNOUSERSITE=1
+
+%runscript
+    exec python "$@"
