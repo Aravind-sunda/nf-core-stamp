@@ -6,7 +6,7 @@
 
 ## Introduction
 
-nf-core/stamp analyses STAMP experiments, in which an RNA base editor deposits C-to-U (or A-to-I) edits on the transcripts it contacts. Which analysis you get is controlled by two things: `--mode`, which selects bulk or single-cell processing, and a set of `--run_*` toggles that switch individual edit callers on and off.
+nf-core/stampseq analyses STAMP experiments, in which an RNA base editor deposits C-to-U (or A-to-I) edits on the transcripts it contacts. Which analysis you get is controlled by two things: `--mode`, which selects bulk or single-cell processing, and a set of `--run_*` toggles that switch individual edit callers on and off.
 
 | Assay              | Parameters                                    | What you get                                             |
 | ------------------ | --------------------------------------------- | -------------------------------------------------------- |

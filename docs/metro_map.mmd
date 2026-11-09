@@ -1,6 +1,6 @@
-%%metro title: nf-core/stamp
+%%metro title: nf-core/stampseq
 %%metro style: dark
-%%metro logo: images/nf-core-stamp_logo_dark.png
+%%metro logo: images/nf-core-stampseq_logo_dark.png
 %%metro logo_scale: 0.6
 %%metro legend: bl
 
@@ -60,16 +60,20 @@
 %%metro file:  flare_out       | TSV   | Edit clusters
 %%metro file:  sc_out          | TSV   | Normalized edits
 
-%% ── Off-track stations (BAM-start entries + reference assets) ───────────────
-%% gtf_in must be off-track alongside flare_regions. FLARE has two incoming
-%% bulk_flare edges — the real route (sailor_run -> flare_run) and the regions
-%% asset (gtf_in -> flare_regions -> flare_run). With gtf_in on-track, the second
-%% renders as a parallel purple branch that drops down and rejoins at FLARE.
-%% Marking it off-track makes it a feeder stub, like the BAM entries.
+%% ── Off-track stations (BAM-start entries) ──────────────────────────────────
+%% gtf_in and flare_regions must stay ON-track under nf-metro >= 2.x. FLARE has
+%% two incoming bulk_flare edges — the real route (normalize_s -> flare_run) and
+%% the regions asset (gtf_in -> flare_regions -> flare_run). Under 1.1.0 these
+%% two were marked off_track to draw the asset as a feeder stub. In 2.1.0 that
+%% aborts the render:
+%%   section 'flare_sec' bundle offsets [0.0, 8.0] are not one block from
+%%   [0.0, 4.0]; markers sit off the trunk
+%% because flare_sec shares an offset frame with sailor_sec (same row, adjacent
+%% column, common line). flare_run stays on bulk_flare's SAILOR slot (8) while
+%% the off-track stubs get re-based to slot 0. On-track, the asset draws as a
+%% short purple branch that merges into FLARE — which is what the code does.
 %%metro off_track: resume_bam_bulk
 %%metro off_track: resume_bam_sc
-%%metro off_track: gtf_in
-%%metro off_track: flare_regions
 
 %% ── Section grid (col,row,rowspan,colspan) ─────────────────────────────────
 %% Row 1: the bulk spine — Pre-processing, Quantification, MARINE.
