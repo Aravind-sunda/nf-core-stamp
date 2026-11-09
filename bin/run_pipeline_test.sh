@@ -34,7 +34,7 @@ mamba activate nextflow
 export NXF_SINGULARITY_CACHEDIR=/condo/brannanlab/tmhaxs421/singularity_cache
 mkdir -p "$NXF_SINGULARITY_CACHEDIR"
 
-PIPELINE_DIR="/condo/brannanlab/tmhaxs421/MARINE_NextFlow/nf-core-stamp"
+PIPELINE_DIR="/condo/brannanlab/tmhaxs421/MARINE_NextFlow/nf-core-stampseq"
 OUTPUT_DIR="/condo/brannanlab/tmhaxs421/MARINE_NextFlow/nfcore-stamp-run"
 
 # ── System-specific paths — edit these for your cluster ──────────────────────
@@ -71,7 +71,7 @@ done
 # --marine_sif "/condo/brannanlab/tmhaxs421/singularity_cache/marine_1.0.2.sif" \
 
 # for PROFILE in "${PROFILES[@]}"; do
-# nextflow run /home/tmhaxs421/brannanlab/tmhaxs421/MARINE_NextFlow/nf-core-stamp/main.nf \
+# nextflow run /home/tmhaxs421/brannanlab/tmhaxs421/MARINE_NextFlow/nf-core-stampseq/main.nf \
 #     --profile "${PROFILE},singularity" \
 #     -preview -with-dag dag_${PROFILE}.mmd \
 #     --sailor_snakemake_path "$SNAKEMAKE_PATH" \

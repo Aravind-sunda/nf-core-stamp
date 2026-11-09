@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=stamp_test
+#SBATCH --job-name=stampseq_test
 #SBATCH --nodes=1
 #SBATCH --partition=defq
 #SBATCH --ntasks-per-node=1
@@ -24,7 +24,7 @@ mamba activate nextflow
 export NXF_SINGULARITY_CACHEDIR=/condo/brannanlab/tmhaxs421/singularity_cache
 mkdir -p "$NXF_SINGULARITY_CACHEDIR"
 
-PIPELINE_DIR="/condo/brannanlab/tmhaxs421/MARINE_NextFlow/nf-core-stamp"
+PIPELINE_DIR="/condo/brannanlab/tmhaxs421/MARINE_NextFlow/nf-core-stampseq"
 SNAKEMAKE_PATH="/cm/shared/apps/snakemake/9.13.4/bin/snakemake"
 
 PROFILE="path/to/your/config_file.config"
