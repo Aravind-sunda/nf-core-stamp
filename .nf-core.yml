@@ -8,7 +8,7 @@ template:
   description: A pipeline to process bulk and single cell ribo and RBP STAMP datasets
   force: false
   is_nfcore: true
-  name: stamp
+  name: stampseq
   org: nf-core
   outdir: .
   skip_features:

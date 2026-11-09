@@ -1,13 +1,13 @@
 <h1>
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="docs/images/nf-core-stamp_logo_dark.png">
-    <img alt="nf-core/stamp" src="docs/images/nf-core-stamp_logo_light.png">
+    <source media="(prefers-color-scheme: dark)" srcset="docs/images/nf-core-stampseq_logo_dark.png">
+    <img alt="nf-core/stampseq" src="docs/images/nf-core-stampseq_logo_light.png">
   </picture>
 </h1>
 
-[![Open in GitHub Codespaces](https://img.shields.io/badge/Open_In_GitHub_Codespaces-black?labelColor=grey&logo=github)](https://github.com/codespaces/new/nf-core/stamp)
-[![GitHub Actions CI Status](https://github.com/nf-core/stamp/actions/workflows/nf-test.yml/badge.svg)](https://github.com/nf-core/stamp/actions/workflows/nf-test.yml)
-[![GitHub Actions Linting Status](https://github.com/nf-core/stamp/actions/workflows/linting.yml/badge.svg)](https://github.com/nf-core/stamp/actions/workflows/linting.yml)[![AWS CI](https://img.shields.io/badge/CI%20tests-full%20size-FF9900?labelColor=000000&logo=Amazon%20AWS)](https://nf-co.re/stamp/results)[![Cite with Zenodo](http://img.shields.io/badge/DOI-10.5281/zenodo.XXXXXXX-1073c8?labelColor=000000)](https://doi.org/10.5281/zenodo.XXXXXXX)
+[![Open in GitHub Codespaces](https://img.shields.io/badge/Open_In_GitHub_Codespaces-black?labelColor=grey&logo=github)](https://github.com/codespaces/new/nf-core/stampseq)
+[![GitHub Actions CI Status](https://github.com/nf-core/stampseq/actions/workflows/nf-test.yml/badge.svg)](https://github.com/nf-core/stampseq/actions/workflows/nf-test.yml)
+[![GitHub Actions Linting Status](https://github.com/nf-core/stampseq/actions/workflows/linting.yml/badge.svg)](https://github.com/nf-core/stampseq/actions/workflows/linting.yml)[![AWS CI](https://img.shields.io/badge/CI%20tests-full%20size-FF9900?labelColor=000000&logo=Amazon%20AWS)](https://nf-co.re/stampseq/results)[![Cite with Zenodo](http://img.shields.io/badge/DOI-10.5281/zenodo.XXXXXXX-1073c8?labelColor=000000)](https://doi.org/10.5281/zenodo.XXXXXXX)
 [![nf-test](https://img.shields.io/badge/unit_tests-nf--test-337ab7.svg)](https://www.nf-test.com)
 
 [![Nextflow](https://img.shields.io/badge/version-%E2%89%A525.10.4-green?style=flat&logo=nextflow&logoColor=white&color=%230DC09D&link=https%3A%2F%2Fnextflow.io)](https://www.nextflow.io/)
@@ -15,13 +15,13 @@
 [![run with conda](http://img.shields.io/badge/run%20with-conda-3EB049?labelColor=000000&logo=anaconda)](https://docs.conda.io/en/latest/)
 [![run with docker](https://img.shields.io/badge/run%20with-docker-0db7ed?labelColor=000000&logo=docker)](https://www.docker.com/)
 [![run with singularity](https://img.shields.io/badge/run%20with-singularity-1d355c.svg?labelColor=000000)](https://sylabs.io/docs/)
-[![Launch on Seqera Platform](https://img.shields.io/badge/Launch%20%F0%9F%9A%80-Seqera%20Platform-%234256e7)](https://cloud.seqera.io/launch?pipeline=https://github.com/nf-core/stamp)
+[![Launch on Seqera Platform](https://img.shields.io/badge/Launch%20%F0%9F%9A%80-Seqera%20Platform-%234256e7)](https://cloud.seqera.io/launch?pipeline=https://github.com/nf-core/stampseq)
 
-[![Get help on Slack](http://img.shields.io/badge/slack-nf--core%20%23stamp-4A154B?labelColor=000000&logo=slack)](https://nfcore.slack.com/channels/stamp)[![Follow on Bluesky](https://img.shields.io/badge/bluesky-%40nf__core-1185fe?labelColor=000000&logo=bluesky)](https://bsky.app/profile/nf-co.re)[![Follow on Mastodon](https://img.shields.io/badge/mastodon-nf__core-6364ff?labelColor=FFFFFF&logo=mastodon)](https://mstdn.science/@nf_core)[![Watch on YouTube](http://img.shields.io/badge/youtube-nf--core-FF0000?labelColor=000000&logo=youtube)](https://www.youtube.com/c/nf-core)
+[![Get help on Slack](http://img.shields.io/badge/slack-nf--core%20%23stampseq-4A154B?labelColor=000000&logo=slack)](https://nfcore.slack.com/channels/stampseq)[![Follow on Bluesky](https://img.shields.io/badge/bluesky-%40nf__core-1185fe?labelColor=000000&logo=bluesky)](https://bsky.app/profile/nf-co.re)[![Follow on Mastodon](https://img.shields.io/badge/mastodon-nf__core-6364ff?labelColor=FFFFFF&logo=mastodon)](https://mstdn.science/@nf_core)[![Watch on YouTube](http://img.shields.io/badge/youtube-nf--core-FF0000?labelColor=000000&logo=youtube)](https://www.youtube.com/c/nf-core)
 
 ## Introduction
 
-**nf-core/stamp** is a bioinformatics pipeline for analysing [STAMP](https://doi.org/10.1038/s41592-021-01128-0) (Surveying Targets by APOBEC-Mediated Profiling) experiments, in which an RNA base editor deposits C-to-U (or A-to-I) edits on the transcripts it contacts. It takes a samplesheet of FASTQ or aligned BAM files, calls edit sites, filters them against dbSNP and gene annotation, normalises them to expression, and summarises their metagene distribution.
+**nf-core/stampseq** is a bioinformatics pipeline for analysing [STAMP](https://doi.org/10.1038/s41592-021-01128-0) (Surveying Targets by APOBEC-Mediated Profiling) experiments, in which an RNA base editor deposits C-to-U (or A-to-I) edits on the transcripts it contacts. It takes a samplesheet of FASTQ or aligned BAM files, calls edit sites, filters them against dbSNP and gene annotation, normalises them to expression, and summarises their metagene distribution.
 
 The pipeline covers three assay designs from a single entry point:
 
@@ -67,7 +67,7 @@ Each row is one sample. Samples may instead start from an aligned `bam`, and sin
 Now, you can run the pipeline using:
 
 ```bash
-nextflow run nf-core/stamp \
+nextflow run nf-core/stampseq \
    -profile <docker/singularity/.../institute> \
    --mode bulk \
    --input samplesheet.csv \
@@ -86,7 +86,7 @@ To call RBP binding sites from an RBP-STAMP experiment, add `--run_flare` (bulk 
 > [!WARNING]
 > Please provide pipeline parameters via the CLI or Nextflow `-params-file` option. Custom config files including those provided by the `-c` Nextflow option can be used to provide any configuration _**except for parameters**_; see [docs](https://nf-co.re/docs/running/run-pipelines#using-parameter-files).
 
-For more details and further functionality, please refer to the [usage documentation](https://nf-co.re/stamp/usage) and the [parameter documentation](https://nf-co.re/stamp/parameters).
+For more details and further functionality, please refer to the [usage documentation](https://nf-co.re/stampseq/usage) and the [parameter documentation](https://nf-co.re/stampseq/parameters).
 
 ### Running on an HPC without internet access
 
@@ -94,15 +94,15 @@ SAILOR and FLARE run Snakemake, which pulls its own Singularity containers at ru
 
 ## Pipeline output
 
-To see the results of an example test run with a full size dataset refer to the [results](https://nf-co.re/stamp/results) tab on the nf-core website pipeline page.
+To see the results of an example test run with a full size dataset refer to the [results](https://nf-co.re/stampseq/results) tab on the nf-core website pipeline page.
 For more details about the output files and reports, please refer to the
-[output documentation](https://nf-co.re/stamp/output).
+[output documentation](https://nf-co.re/stampseq/output).
 
 The primary outputs are per-sample filtered edit sites normalised to gene expression, their metagene distribution, and — for RBP-STAMP — FDR-scored edit clusters representing candidate RBP binding sites.
 
 ## Credits
 
-nf-core/stamp was originally written and tested by Aravind Sundaravadivelu and  Dr. Luiz H. Maniero 
+nf-core/stampseq was originally written and tested by Aravind Sundaravadivelu and  Dr. Luiz H. Maniero 
 
 We thank the following people for their extensive assistance in the development of this pipeline:
 
@@ -113,16 +113,16 @@ We thank the following people for their extensive assistance in the development 
 
 If you would like to contribute to this pipeline, please see the [contributing guidelines](docs/CONTRIBUTING.md).
 
-For further information or help, don't hesitate to get in touch on the [Slack `#stamp` channel](https://nfcore.slack.com/channels/stamp) (you can join with [this invite](https://nf-co.re/join/slack)).
+For further information or help, don't hesitate to get in touch on the [Slack `#stampseq` channel](https://nfcore.slack.com/channels/stampseq) (you can join with [this invite](https://nf-co.re/join/slack)).
 
 ## Citations
 
 <!-- TODO nf-core: Add citation for pipeline after first release. Uncomment lines below and update Zenodo doi and badge at the top of this file. -->
-If you use nf-core/stamp for your analysis, please cite it using the following doi: [10.5281/zenodo.XXXXXX](https://doi.org/10.5281/zenodo.XXXXXX)
+If you use nf-core/stampseq for your analysis, please cite it using the following doi: [10.5281/zenodo.XXXXXX](https://doi.org/10.5281/zenodo.XXXXXX)
 >
 > Sundaravadivelu A, Maniero L, Beltrame E, Brannan KW. nf-core/STAMP: a Nextflow pipeline for STAMP analysis. 2026. In preparation. 
 >
-If you use nf-core/stamp for your analysis, please also cite the tools it wraps — in particular STAMP, MARINE, SAILOR and FLARE:
+If you use nf-core/stampseq for your analysis, please also cite the tools it wraps — in particular STAMP, MARINE, SAILOR and FLARE:
 
 > Brannan KW, Chaim IA, Marina RJ, et al. Robust single-cell discovery of RNA targets of RNA-binding proteins and ribosomes. _Nat Methods._ 2021;18(5):507-519. doi: [10.1038/s41592-021-01128-0](https://doi.org/10.1038/s41592-021-01128-0).
 >

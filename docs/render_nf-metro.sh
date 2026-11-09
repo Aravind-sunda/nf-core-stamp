@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ─────────────────────────────────────────────────────────────────────────────
-#  Render the nf-core/stamp metro map with nf-metro 1.1.0
+#  Render the nf-core/stampseq metro map with nf-metro 1.1.0
 #  Docs / directive reference: https://github.com/seqeralabs/nf-metro
 #
 #
@@ -52,8 +52,8 @@ nf-metro render metro_map.mmd \
     --directional \
     --mode dark \
     --validate \
-    -o images/stamp_metro_dark.svg \
-    --logo images/nf-core-stamp_logo_dark.png
+    -o images/stampseq_metro_dark.svg \
+    --logo images/nf-core-stampseq_logo_dark.png
 
 # Static SVG, light — same map and layout, light palette.
 nf-metro render metro_map.mmd \
@@ -64,8 +64,8 @@ nf-metro render metro_map.mmd \
     --directional \
     --mode light \
     --validate \
-    -o images/stamp_metro_light.svg \
-    --logo images/nf-core-stamp_logo_light.png
+    -o images/stampseq_metro_light.svg \
+    --logo images/nf-core-stampseq_logo_light.png
 
 # Animated SVG, dark — embedded in the README for dark-theme readers.
 # --embed-font inlines Inter so the SVG renders identically on GitHub, which
@@ -80,8 +80,8 @@ nf-metro render metro_map.mmd \
     --mode dark \
     --animate \
     --embed-font \
-    -o images/stamp_metro_animated_dark.svg \
-    --logo images/nf-core-stamp_logo_dark.png
+    -o images/stampseq_metro_animated_dark.svg \
+    --logo images/nf-core-stampseq_logo_dark.png
 
 # Animated SVG, light — embedded in the README for light-theme readers.
 nf-metro render metro_map.mmd \
@@ -93,8 +93,8 @@ nf-metro render metro_map.mmd \
     --mode light \
     --animate \
     --embed-font \
-    -o images/stamp_metro_animated_light.svg \
-    --logo images/nf-core-stamp_logo_light.png
+    -o images/stampseq_metro_animated_light.svg \
+    --logo images/nf-core-stampseq_logo_light.png
 
 # Interactive HTML, dark — pan/zoom, hover stations, click legend to isolate a
 # line. --validate is SVG-only, so the HTML renders cannot carry it.
@@ -106,8 +106,8 @@ nf-metro render metro_map.mmd \
     --directional \
     --mode dark \
     --format html \
-    -o images/stamp_metro_dark.html \
-    --logo images/nf-core-stamp_logo_dark.png
+    -o images/stampseq_metro_dark.html \
+    --logo images/nf-core-stampseq_logo_dark.png
 
 # Interactive HTML, light — same interactions, light palette.
 nf-metro render metro_map.mmd \
@@ -118,5 +118,5 @@ nf-metro render metro_map.mmd \
     --directional \
     --mode light \
     --format html \
-    -o images/stamp_metro_light.html \
-    --logo images/nf-core-stamp_logo_light.png
+    -o images/stampseq_metro_light.html \
+    --logo images/nf-core-stampseq_logo_light.png

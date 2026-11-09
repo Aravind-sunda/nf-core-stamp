@@ -1,4 +1,4 @@
-# nf-core/stamp: Output
+# nf-core/stampseq: Output
 
 ## Introduction
 
