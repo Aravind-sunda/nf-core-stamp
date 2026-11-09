@@ -1,6 +1,6 @@
 {
-    "name": "nf-core/stamp",
-    "homePage": "https://github.com/nf-core/stamp",
+    "name": "nf-core/stampseq",
+    "homePage": "https://github.com/nf-core/stampseq",
     "repos": {
         "https://github.com/nf-core/modules.git": {
             "modules": {

@@ -18,7 +18,7 @@ include { MULTIQC                } from '../modules/nf-core/multiqc/main'
 include { paramsSummaryMap       } from 'plugin/nf-schema'
 include { paramsSummaryMultiqc   } from '../subworkflows/nf-core/utils_nfcore_pipeline'
 include { softwareVersionsToYAML } from '../subworkflows/nf-core/utils_nfcore_pipeline'
-include { methodsDescriptionText } from '../subworkflows/local/utils_nfcore_stamp_pipeline'
+include { methodsDescriptionText } from '../subworkflows/local/utils_nfcore_stampseq_pipeline'
 
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -50,7 +50,7 @@ def resolveGenePred(projectDir) {
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 */
 
-workflow STAMP {
+workflow STAMPSEQ {
 
     take:
     ch_samplesheet               // channel: typed tuples from classifyAndValidateRow()
@@ -307,7 +307,7 @@ workflow STAMP {
         .mix(topic_versions_string)
         .collectFile(
             storeDir: "${outdir}/pipeline_info",
-            name: 'nf_core_'  +  'stamp_software_'  + 'mqc_'  + 'versions.yml',
+            name: 'nf_core_'  +  'stampseq_software_'  + 'mqc_'  + 'versions.yml',
             sort: true,
             newLine: true
         )
@@ -334,7 +334,7 @@ workflow STAMP {
     MULTIQC(
         ch_multiqc_files.flatten().collect().map { files ->
             [
-                [id: 'stamp'],
+                [id: 'stampseq'],
                 files,
                 multiqc_config
                     ? file(multiqc_config, checkIfExists: true)
