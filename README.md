@@ -30,8 +30,8 @@ The pipeline covers three assay designs from a single entry point:
 - **Single-cell STAMP** — per-cell edit calls from 10x Genomics libraries.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/images/stamp_metro_animated_dark.svg">
-  <img alt="nf-core/stamp metro map" src="docs/images/stamp_metro_animated_light.svg">
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/stampseq_metro_animated_dark.svg">
+  <img alt="nf-core/stampseq metro map" src="docs/images/stampseq_metro_animated_light.svg">
 </picture>
 
 > In case the image above is not loading, please have a look at the static version ([light](docs/images/stamp_metro_light.svg) / [dark](docs/images/stamp_metro_dark.svg)) or the interactive version ([light](docs/images/stamp_metro_light.html) / [dark](docs/images/stamp_metro_dark.html)).
