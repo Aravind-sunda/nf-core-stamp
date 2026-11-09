@@ -1,11 +1,11 @@
 #!/usr/bin/env nextflow
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    nf-core/stamp
+    nf-core/stampseq
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    Github : https://github.com/nf-core/stamp
-    Website: https://nf-co.re/stamp
-    Slack  : https://nfcore.slack.com/channels/stamp
+    Github : https://github.com/nf-core/stampseq
+    Website: https://nf-co.re/stampseq
+    Slack  : https://nfcore.slack.com/channels/stampseq
 ----------------------------------------------------------------------------------------
 */
 
@@ -15,10 +15,10 @@
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 */
 
-include { STAMP  } from './workflows/stamp'
-include { PIPELINE_INITIALISATION } from './subworkflows/local/utils_nfcore_stamp_pipeline'
-include { PIPELINE_COMPLETION     } from './subworkflows/local/utils_nfcore_stamp_pipeline'
-include { getGenomeAttribute      } from './subworkflows/local/utils_nfcore_stamp_pipeline'
+include { STAMPSEQ  } from './workflows/stampseq'
+include { PIPELINE_INITIALISATION } from './subworkflows/local/utils_nfcore_stampseq_pipeline'
+include { PIPELINE_COMPLETION     } from './subworkflows/local/utils_nfcore_stampseq_pipeline'
+include { getGenomeAttribute      } from './subworkflows/local/utils_nfcore_stampseq_pipeline'
 
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -40,7 +40,7 @@ params.fasta = getGenomeAttribute('fasta')
 //
 // WORKFLOW: Run main analysis pipeline depending on type of input
 //
-workflow NFCORE_STAMP {
+workflow NFCORE_STAMPSEQ {
 
     take:
     samplesheet // channel: samplesheet read in from --input
@@ -50,7 +50,7 @@ workflow NFCORE_STAMP {
     //
     // WORKFLOW: Run pipeline
     //
-    STAMP (
+    STAMPSEQ (
         samplesheet,
         params.multiqc_config,
         params.multiqc_logo,
@@ -58,7 +58,7 @@ workflow NFCORE_STAMP {
         params.outdir,
     )
     emit:
-    multiqc_report = STAMP.out.multiqc_report // channel: /path/to/multiqc_report.html
+    multiqc_report = STAMPSEQ.out.multiqc_report // channel: /path/to/multiqc_report.html
 }
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -87,7 +87,7 @@ workflow {
     //
     // WORKFLOW: Run main workflow
     //
-    NFCORE_STAMP (
+    NFCORE_STAMPSEQ (
         PIPELINE_INITIALISATION.out.samplesheet
     )
     //
@@ -99,7 +99,7 @@ workflow {
         params.plaintext_email,
         params.outdir,
         params.monochrome_logs,
-        NFCORE_STAMP.out.multiqc_report
+        NFCORE_STAMPSEQ.out.multiqc_report
     )
 }
 
